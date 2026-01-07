@@ -157,9 +157,11 @@ logo.addEventListener("touchstart", () => {
 /* ===== 一時検索（Startpage・履歴なし）===== */
 document.getElementById("q").addEventListener("keydown", e => {
   if (e.key === "Enter") {
-    document.getElementById("result").src =
-      "https://duckduckgo.com/?t=h_&ia=web&q=" +
-      encodeURIComponent(e.target.value);
+    const q = encodeURIComponent(e.target.value);
+    window.open(
+      "https://duckduckgo.com/?q=" + q,
+      "_blank"
+    );
   }
 });
 </script>
