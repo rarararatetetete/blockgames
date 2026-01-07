@@ -156,13 +156,22 @@ logo.addEventListener("touchstart", () => {
 });
 
 /* ===== 一時検索（DuckDuckGo・履歴なし） ===== */
-document.getElementById("q").addEventListener("keydown", e => {
+document.getElementById("q").addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     const q = encodeURIComponent(e.target.value);
+
+    // 検索（新しいタブ）
     window.open(
       "https://duckduckgo.com/?q=" + q,
-      "_blank"
+      "_blank",
+      "noreferrer"
     );
+
+    // 🔒 隠し画面を閉じる
+    secret.style.display = "none";
+
+    // 🧹 入力も消す
+    e.target.value = "";
   }
 });
 </script>
