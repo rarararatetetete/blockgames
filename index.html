@@ -1,148 +1,167 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>BLOCK GAMES</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      margin: 0;
-      background: #111;
-      color: #fff;
-      font-family: sans-serif;
-      text-align: center;
-    }
-    #logo {
-      font-size: 28px;
-      font-weight: bold;
-      padding: 15px;
-      user-select: none;
-    }
-    canvas {
-      background: #000;
-      display: block;
-      margin: 0 auto;
-    }
-    #secret {
-      display: none;
-      padding: 10px;
-    }
-    input {
-      width: 80%;
-      padding: 8px;
-      font-size: 16px;
-    }
-    button {
-      padding: 8px 12px;
-      font-size: 16px;
-    }
-    iframe {
-      width: 100%;
-      height: 70vh;
-      border: none;
-      margin-top: 10px;
-      background: #fff;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>BLOCK GAMES</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  margin: 0;
+  background: #0b132b; /* 紺色 */
+  color: white;
+  text-align: center;
+  font-family: sans-serif;
+}
+
+#logo {
+  font-size: 28px;
+  font-weight: bold;
+  padding: 16px;
+  user-select: none;
+}
+
+canvas {
+  background: black;
+  display: block;
+  margin: 0 auto;
+}
+
+/* 隠し検索 */
+#secret {
+  display: none;
+  background: #111;
+  padding: 12px;
+}
+
+input {
+  width: 90%;
+  padding: 10px;
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+iframe {
+  width: 100%;
+  height: 60vh;
+  border: none;
+  background: white;
+}
+</style>
 </head>
+
 <body>
 
 <div id="logo">BLOCK GAMES</div>
 
-<canvas id="game" width="320" height="400"></canvas>
+<canvas id="game" width="360" height="480"></canvas>
 
 <div id="secret">
-  <p>検索</p>
-  <input id="q" placeholder="検索ワード" />
-  <button onclick="search()">🔍</button>
+  <input id="q" placeholder="検索">
   <iframe id="result"></iframe>
 </div>
 
 <script>
-/* ===== ゲーム ===== */
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+/* ===== ブロックゲーム ===== */
+const c = document.getElementById("game");
+const ctx = c.getContext("2d");
 
-let ball = { x: 160, y: 300, vx: 2, vy: -2, r: 6 };
-let paddle = { x: 120, w: 80 };
+let ball = { x: 180, y: 300, dx: 4, dy: -4, r: 7 };
+let paddle = { x: 140, w: 80 };
 let blocks = [];
 
-for (let y = 0; y < 3; y++) {
-  for (let x = 0; x < 5; x++) {
-    blocks.push({ x: x * 60 + 10, y: y * 25 + 40, alive: true });
+for (let y = 0; y < 4; y++) {
+  for (let x = 0; x < 6; x++) {
+    blocks.push({ x: x * 55 + 10, y: y * 25 + 40, alive: true });
   }
 }
 
-canvas.addEventListener("touchmove", e => {
-  paddle.x = e.touches[0].clientX - 40;
+c.addEventListener("touchmove", e => {
+  const rect = c.getBoundingClientRect();
+  paddle.x = e.touches[0].clientX - rect.left - paddle.w / 2;
 });
 
 function loop() {
-  ctx.clearRect(0,0,320,400);
+  ctx.clearRect(0,0,c.width,c.height);
 
   // ball
-  ball.x += ball.vx;
-  ball.y += ball.vy;
+  ball.x += ball.dx;
+  ball.y += ball.dy;
 
-  if (ball.x < 0 || ball.x > 320) ball.vx *= -1;
-  if (ball.y < 0) ball.vy *= -1;
+  if (ball.x < ball.r || ball.x > c.width - ball.r) ball.dx *= -1;
+  if (ball.y < ball.r) ball.dy *= -1;
 
-  if (ball.y > 390 &&
-      ball.x > paddle.x &&
-      ball.x < paddle.x + paddle.w) {
-    ball.vy *= -1;
+  if (
+    ball.y > c.height - 25 &&
+    ball.x > paddle.x &&
+    ball.x < paddle.x + paddle.w
+  ) {
+    ball.dy *= -1;
   }
 
   blocks.forEach(b => {
-    if (b.alive &&
-        ball.x > b.x && ball.x < b.x + 50 &&
-        ball.y > b.y && ball.y < b.y + 20) {
+    if (
+      b.alive &&
+      ball.x > b.x &&
+      ball.x < b.x + 45 &&
+      ball.y > b.y &&
+      ball.y < b.y + 18
+    ) {
       b.alive = false;
-      ball.vy *= -1;
+      ball.dy *= -1;
     }
   });
 
   // draw
-  ctx.fillRect(paddle.x, 380, paddle.w, 8);
+  ctx.fillStyle = "white";
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
   ctx.fill();
 
+  ctx.fillRect(paddle.x, c.height - 15, paddle.w, 8);
+
+  ctx.fillStyle = "#4da6ff";
   blocks.forEach(b => {
-    if (b.alive) ctx.fillRect(b.x, b.y, 50, 20);
+    if (b.alive) ctx.fillRect(b.x, b.y, 45, 18);
   });
 
   requestAnimationFrame(loop);
 }
 loop();
 
-/* ===== 隠し機能（5回タップ）===== */
+/* ===== 隠し機能：ロゴ5回タップ ===== */
 const logo = document.getElementById("logo");
 const secret = document.getElementById("secret");
+
 let taps = 0;
-let last = 0;
+let timer = null;
 
 logo.addEventListener("touchstart", () => {
-  const now = Date.now();
-  if (now - last < 600) {
-    taps++;
-  } else {
-    taps = 1;
+  taps++;
+
+  if (!timer) {
+    timer = setTimeout(() => {
+      taps = 0;
+      timer = null;
+    }, 1500);
   }
-  last = now;
 
   if (taps === 5) {
     secret.style.display = "block";
     taps = 0;
+    clearTimeout(timer);
+    timer = null;
   }
 });
 
-/* ===== 検索（履歴保存なし）===== */
-function search() {
-  const q = document.getElementById("q").value;
-  document.getElementById("result").src =
-    "https://www.bing.com/search?q=" + encodeURIComponent(q);
-}
+/* ===== 一時検索（Startpage・履歴なし）===== */
+document.getElementById("q").addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    document.getElementById("result").src =
+      "https://www.startpage.com/do/search?query=" +
+      encodeURIComponent(e.target.value);
+  }
+});
 </script>
 
 </body>
