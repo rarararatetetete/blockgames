@@ -154,8 +154,7 @@ logo.addEventListener("touchstart", () => {
     timer = null;
   }
 });
-
-/* ===== 一時検索（DuckDuckGo・履歴なし） ===== */
+/* ===== 一時検索 (DuckDuckGo・履歴なし) ===== */
 document.getElementById("q").addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     const q = encodeURIComponent(e.target.value);
@@ -174,4 +173,3 @@ document.getElementById("q").addEventListener("keydown", (e) => {
     e.target.value = "";
   }
 });
-</script>
