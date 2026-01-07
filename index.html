@@ -75,28 +75,6 @@ logo.addEventListener("touchcancel", () => {
   clearTimeout(pressTimer);
 });
 
-// ===== 検索（今回だけ）=====
-async function search() {
-  const q = document.getElementById("q").value;
-  if (!q) return;
-  const res = await fetch(
-    `https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&format=json`
-  );
-  const data = await res.json();
-  document.getElementById("result").textContent =
-    data.AbstractText || "結果なし";
-}
-
-function openSecret() {
-  document.getElementById("secret").style.display = "block";
-}
-
-function closeSecret() {
-  document.getElementById("q").value = "";
-  document.getElementById("result").textContent = "";
-  document.getElementById("secret").style.display = "none";
-}
-
 // ===== ブロック崩し =====
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
