@@ -2,198 +2,184 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BLOCK GAMES</title>
-
 <style>
   body {
     margin: 0;
-    background: #020617;
+    background: #020824;
     color: white;
     font-family: sans-serif;
-    text-align: center;
+    overflow: hidden;
   }
 
-  h1 {
-    margin: 10px 0;
+  #gameScreen, #searchScreen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  #searchScreen {
+    display: none;
   }
 
   canvas {
     background: black;
-    display: block;
-    margin: 0 auto;
+    border: 2px solid #3b5cff;
     touch-action: none;
   }
 
-  #secret {
-    display: none;
-    margin-top: 10px;
-  }
-
-  #q {
-    padding: 8px;
+  input {
     width: 80%;
-    font-size: 16px;
+    max-width: 400px;
+    padding: 12px;
+    font-size: 18px;
+    border-radius: 8px;
+    border: none;
   }
 </style>
 </head>
-
 <body>
 
-<h1 id="logo">BLOCK GAMES</h1>
+<!-- ===== ゲーム画面 ===== -->
+<div id="gameScreen">
+  <canvas id="game"></canvas>
+</div>
 
-<canvas id="game"></canvas>
-
-<div id="secret">
-  <input id="q" placeholder="DuckDuckGo 検索">
+<!-- ===== 検索画面（隠し） ===== -->
+<div id="searchScreen">
+  <form action="https://duckduckgo.com/" method="GET">
+    <input type="text" name="q" placeholder="Search…" autofocus>
+  </form>
 </div>
 
 <script>
-/* ===== Canvas フルサイズ ===== */
+/* ===== 隠し機能：5回タップ ===== */
+let tapCount = 0;
+let showSearch = false;
+
+document.addEventListener("click", () => {
+  tapCount++;
+  if (tapCount >= 5) {
+    tapCount = 0;
+    showSearch = !showSearch;
+    gameScreen.style.display = showSearch ? "none" : "flex";
+    searchScreen.style.display = showSearch ? "flex" : "none";
+  }
+});
+
+/* ===== Canvas設定 ===== */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight - 100;
+  canvas.width = Math.min(window.innerWidth - 20, 400);
+  canvas.height = Math.min(window.innerHeight - 20, 600);
 }
 resize();
 window.addEventListener("resize", resize);
 
 /* ===== パドル ===== */
-let paddle = {
-  w: 80,
-  h: 10,
-  x: canvas.width / 2 - 40,
-  y: canvas.height - 30
-};
+const paddle = { w: 80, h: 10, x: 0, y: 0 };
 
 /* ===== ボール ===== */
-let ball = {
-  x: canvas.width / 2,
-  y: canvas.height / 2,
-  r: 8,
-  vx: 5,
-  vy: -5
-};
+const ball = { r: 6, x: 0, y: 0, vx: 5, vy: -5 };
 
 /* ===== ブロック ===== */
-const rows = 4;
-const cols = 6;
-const bw = 50;
-const bh = 20;
+const rows = 5, cols = 7;
+const bw = 45, bh = 15, gap = 8;
 let blocks = [];
 
-for (let r = 0; r < rows; r++) {
-  for (let c = 0; c < cols; c++) {
-    blocks.push({
-      x: 20 + c * (bw + 10),
-      y: 40 + r * (bh + 10),
-      alive: true
-    });
+function initBlocks() {
+  blocks = [];
+  const totalW = cols * bw + (cols - 1) * gap;
+  const startX = (canvas.width - totalW) / 2;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      blocks.push({
+        x: startX + c * (bw + gap),
+        y: 40 + r * (bh + gap),
+        alive: true
+      });
+    }
   }
 }
 
+/* ===== リセット ===== */
+function reset() {
+  paddle.x = (canvas.width - paddle.w) / 2;
+  paddle.y = canvas.height - 40;
+  ball.x = canvas.width / 2;
+  ball.y = canvas.height - 60;
+  ball.vx = 5;
+  ball.vy = -5;
+  initBlocks();
+}
+reset();
+
 /* ===== 操作 ===== */
 canvas.addEventListener("touchmove", e => {
-  const touch = e.touches[0];
-  paddle.x = touch.clientX - paddle.w / 2;
+  const x = e.touches[0].clientX;
+  paddle.x = x - canvas.getBoundingClientRect().left - paddle.w / 2;
 });
 
-/* ===== メインループ ===== */
-function loop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+/* ===== 描画 ===== */
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // ボール移動
+  // パドル
+  ctx.fillStyle = "white";
+  ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+
+  // ボール
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ブロック
+  ctx.fillStyle = "#4aa3ff";
+  blocks.forEach(b => {
+    if (b.alive) ctx.fillRect(b.x, b.y, bw, bh);
+  });
+}
+
+/* ===== 更新 ===== */
+function update() {
   ball.x += ball.vx;
   ball.y += ball.vy;
 
-  // 壁
   if (ball.x < ball.r || ball.x > canvas.width - ball.r) ball.vx *= -1;
   if (ball.y < ball.r) ball.vy *= -1;
 
-  // パドル
   if (
     ball.y + ball.r > paddle.y &&
     ball.x > paddle.x &&
     ball.x < paddle.x + paddle.w
-  ) {
-    ball.vy *= -1;
-    ball.y = paddle.y - ball.r;
-  }
+  ) ball.vy *= -1;
 
-  // 落下リセット
-  if (ball.y > canvas.height) {
-    ball.x = canvas.width / 2;
-    ball.y = canvas.height / 2;
-    ball.vy = -5;
-  }
-
-  // ブロック
   blocks.forEach(b => {
-    if (!b.alive) return;
-    if (
-      ball.x > b.x &&
-      ball.x < b.x + bw &&
-      ball.y > b.y &&
-      ball.y < b.y + bh
-    ) {
+    if (b.alive &&
+        ball.x > b.x && ball.x < b.x + bw &&
+        ball.y > b.y && ball.y < b.y + bh) {
       b.alive = false;
       ball.vy *= -1;
     }
   });
 
-  // 描画
-  ctx.fillStyle = "white";
-  ctx.beginPath();
-  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-  ctx.fill();
+  if (ball.y > canvas.height) reset();
+}
 
-  ctx.fillStyle = "#3b82f6";
-  ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
-
-  ctx.fillStyle = "#60a5fa";
-  blocks.forEach(b => {
-    if (b.alive) ctx.fillRect(b.x, b.y, bw, bh);
-  });
-
+/* ===== ループ ===== */
+function loop() {
+  update();
+  draw();
   requestAnimationFrame(loop);
 }
 loop();
-
-/* ===== 5回タップ検索 ===== */
-const logo = document.getElementById("logo");
-const secret = document.getElementById("secret");
-let taps = 0;
-let timer = null;
-
-logo.addEventListener("touchstart", () => {
-  taps++;
-  if (!timer) {
-    timer = setTimeout(() => {
-      taps = 0;
-      timer = null;
-    }, 1500);
-  }
-  if (taps === 5) {
-    secret.style.display = "block";
-    taps = 0;
-    clearTimeout(timer);
-    timer = null;
-  }
-});
-
-/* ===== DuckDuckGo ===== */
-document.getElementById("q").addEventListener("keydown", e => {
-  if (e.key === "Enter") {
-    window.open(
-      "https://duckduckgo.com/?q=" + encodeURIComponent(e.target.value),
-      "_blank",
-      "noreferrer"
-    );
-    secret.style.display = "none";
-    e.target.value = "";
-  }
-});
 </script>
 
 </body>
