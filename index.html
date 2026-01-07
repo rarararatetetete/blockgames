@@ -67,16 +67,22 @@
 </div>
 
 <script>
-/* ===== 5回タップで検索 ===== */
+/* ===== 5回タップで切り替え ===== */
 let taps = 0;
 document.addEventListener("click", () => {
   taps++;
-  if (taps === 5) {
+  if (taps >= 5) {
     taps = 0;
-    gameScreen.style.display =
-      gameScreen.style.display === "none" ? "flex" : "none";
-    searchScreen.style.display =
-      searchScreen.style.display === "none" ? "flex" : "none";
+
+    if (searchScreen.style.display === "flex") {
+      // 検索 → ゲーム
+      searchScreen.style.display = "none";
+      gameScreen.style.display = "flex";
+    } else {
+      // ゲーム → 検索
+      gameScreen.style.display = "none";
+      searchScreen.style.display = "flex";
+    }
   }
 });
 
