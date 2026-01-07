@@ -3,139 +3,86 @@
 <head>
 <meta charset="UTF-8">
 <title>BLOCK GAMES</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body {
-  margin: 0;
-  background: #0b132b; /* 紺色 */
-  color: white;
-  text-align: center;
-  font-family: sans-serif;
-}
+  body {
+    margin: 0;
+    background: linear-gradient(#0a1433, #020617);
+    color: white;
+    text-align: center;
+    font-family: sans-serif;
+  }
 
-#logo {
-  font-size: 28px;
-  font-weight: bold;
-  padding: 16px;
-  user-select: none;
-}
+  h1 {
+    margin: 16px 0;
+  }
 
-canvas {
-  background: black;
-  display: block;
-  margin: 0 auto;
-}
+  canvas {
+    background: black;
+    display: block;
+    margin: 0 auto;
+    border: 2px solid #1e3a8a;
+  }
 
-/* 隠し検索 */
-#secret {
-  display: none;
-  background: #111;
-  padding: 12px;
-}
+  #secret {
+    display: none;
+    margin-top: 10px;
+  }
 
-input {
-  width: 90%;
-  padding: 10px;
-  font-size: 16px;
-  margin-bottom: 8px;
-}
-
-iframe {
-  width: 100%;
-  height: 60vh;
-  border: none;
-  background: white;
-}
+  #q {
+    width: 80%;
+    padding: 8px;
+    font-size: 16px;
+  }
 </style>
 </head>
 
 <body>
 
-<div id="logo">BLOCK GAMES</div>
+<h1 id="logo">BLOCK GAMES</h1>
 
-<canvas id="game" width="360" height="480"></canvas>
+<canvas id="game" width="320" height="480"></canvas>
 
 <div id="secret">
-  <input id="q" placeholder="検索">
-  <iframe id="result"></iframe>
+  <input id="q" placeholder="DuckDuckGo 検索">
 </div>
 
 <script>
-/* ===== ブロックゲーム ===== */
-const c = document.getElementById("game");
-const ctx = c.getContext("2d");
+/* =====================
+   🎮 ゲーム本体
+===================== */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-let ball = { x: 180, y: 300, dx: 4, dy: -4, r: 7 };
-let paddle = { x: 140, w: 80 };
-let blocks = [];
-
-for (let y = 0; y < 4; y++) {
-  for (let x = 0; x < 6; x++) {
-    blocks.push({ x: x * 55 + 10, y: y * 25 + 40, alive: true });
-  }
-}
-
-c.addEventListener("touchmove", e => {
-  const rect = c.getBoundingClientRect();
-  paddle.x = e.touches[0].clientX - rect.left - paddle.w / 2;
-});
+let ball = { x: 160, y: 240, vx: 3, vy: 4, r: 8 };
 
 function loop() {
-  ctx.clearRect(0,0,c.width,c.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // ball
-  ball.x += ball.dx;
-  ball.y += ball.dy;
+  ball.x += ball.vx;
+  ball.y += ball.vy;
 
-  if (ball.x < ball.r || ball.x > c.width - ball.r) ball.dx *= -1;
-  if (ball.y < ball.r) ball.dy *= -1;
+  if (ball.x < ball.r || ball.x > canvas.width - ball.r) ball.vx *= -1;
+  if (ball.y < ball.r || ball.y > canvas.height - ball.r) ball.vy *= -1;
 
-  if (
-    ball.y > c.height - 25 &&
-    ball.x > paddle.x &&
-    ball.x < paddle.x + paddle.w
-  ) {
-    ball.dy *= -1;
-  }
-
-  blocks.forEach(b => {
-    if (
-      b.alive &&
-      ball.x > b.x &&
-      ball.x < b.x + 45 &&
-      ball.y > b.y &&
-      ball.y < b.y + 18
-    ) {
-      b.alive = false;
-      ball.dy *= -1;
-    }
-  });
-
-  // draw
-  ctx.fillStyle = "white";
   ctx.beginPath();
-  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  ctx.fillStyle = "white";
   ctx.fill();
-
-  ctx.fillRect(paddle.x, c.height - 15, paddle.w, 8);
-
-  ctx.fillStyle = "#4da6ff";
-  blocks.forEach(b => {
-    if (b.alive) ctx.fillRect(b.x, b.y, 45, 18);
-  });
 
   requestAnimationFrame(loop);
 }
+
 loop();
 
-<script>
-/* ===== ロゴ5回タップで隠し画面 ===== */
-let taps = 0;
-let timer = null;
-
+/* =====================
+   👀 5回タップで隠し検索
+===================== */
 const logo = document.getElementById("logo");
 const secret = document.getElementById("secret");
+
+let taps = 0;
+let timer = null;
 
 logo.addEventListener("touchstart", () => {
   taps++;
@@ -154,22 +101,25 @@ logo.addEventListener("touchstart", () => {
     timer = null;
   }
 });
-/* ===== 一時検索 (DuckDuckGo・履歴なし) ===== */
+
+/* =====================
+   🔍 DuckDuckGo 一時検索
+===================== */
 document.getElementById("q").addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     const q = encodeURIComponent(e.target.value);
 
-    // 検索（新しいタブ）
     window.open(
       "https://duckduckgo.com/?q=" + q,
       "_blank",
       "noreferrer"
     );
 
-    // 🔒 隠し画面を閉じる
     secret.style.display = "none";
-
-    // 🧹 入力も消す
     e.target.value = "";
   }
 });
+</script>
+
+</body>
+</html>
