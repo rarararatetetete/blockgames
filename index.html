@@ -129,12 +129,13 @@ function loop() {
 }
 loop();
 
-/* ===== 隠し機能：ロゴ5回タップ ===== */
-const logo = document.getElementById("logo");
-const secret = document.getElementById("secret");
-
+<script>
+/* ===== ロゴ5回タップで隠し画面 ===== */
 let taps = 0;
 let timer = null;
+
+const logo = document.getElementById("logo");
+const secret = document.getElementById("secret");
 
 logo.addEventListener("touchstart", () => {
   taps++;
@@ -154,7 +155,7 @@ logo.addEventListener("touchstart", () => {
   }
 });
 
-/* ===== 一時検索（Startpage・履歴なし）===== */
+/* ===== 一時検索（DuckDuckGo・履歴なし） ===== */
 document.getElementById("q").addEventListener("keydown", e => {
   if (e.key === "Enter") {
     const q = encodeURIComponent(e.target.value);
@@ -165,6 +166,3 @@ document.getElementById("q").addEventListener("keydown", e => {
   }
 });
 </script>
-
-</body>
-</html>
