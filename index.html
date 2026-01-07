@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>BLOCK GAMES</title>
+
 <style>
   body {
     margin: 0;
@@ -13,22 +14,30 @@
     overflow: hidden;
   }
 
+  header {
+    text-align: center;
+    padding: 10px 0;
+    font-weight: bold;
+  }
+
   #gameScreen, #searchScreen {
     position: absolute;
-    inset: 0;
+    top: 40px;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    flex-direction: column;
   }
 
   #searchScreen {
     display: none;
+    flex-direction: column;
   }
 
   canvas {
     background: black;
-    border: 2px solid #3b5cff;
     touch-action: none;
   }
 
@@ -42,67 +51,79 @@
   }
 </style>
 </head>
+
 <body>
 
-<!-- ===== ゲーム画面 ===== -->
+<header>BLOCK GAMES</header>
+
 <div id="gameScreen">
   <canvas id="game"></canvas>
 </div>
 
-<!-- ===== 検索画面（隠し） ===== -->
 <div id="searchScreen">
   <form action="https://duckduckgo.com/" method="GET">
-    <input type="text" name="q" placeholder="Search…" autofocus>
+    <input name="q" placeholder="Search…" autofocus>
   </form>
 </div>
 
 <script>
-/* ===== 隠し機能：5回タップ ===== */
-let tapCount = 0;
-let showSearch = false;
-
+/* ===== 5回タップで検索 ===== */
+let taps = 0;
 document.addEventListener("click", () => {
-  tapCount++;
-  if (tapCount >= 5) {
-    tapCount = 0;
-    showSearch = !showSearch;
-    gameScreen.style.display = showSearch ? "none" : "flex";
-    searchScreen.style.display = showSearch ? "flex" : "none";
+  taps++;
+  if (taps === 5) {
+    taps = 0;
+    gameScreen.style.display =
+      gameScreen.style.display === "none" ? "flex" : "none";
+    searchScreen.style.display =
+      searchScreen.style.display === "none" ? "flex" : "none";
   }
 });
 
-/* ===== Canvas設定 ===== */
+/* ===== Canvas ===== */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 function resize() {
-  canvas.width = Math.min(window.innerWidth - 20, 400);
-  canvas.height = Math.min(window.innerHeight - 20, 600);
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight - 40;
 }
 resize();
 window.addEventListener("resize", resize);
 
 /* ===== パドル ===== */
-const paddle = { w: 80, h: 10, x: 0, y: 0 };
+const paddle = {
+  w: 100,
+  h: 12,
+  x: 0,
+  y: 0
+};
 
 /* ===== ボール ===== */
-const ball = { r: 6, x: 0, y: 0, vx: 5, vy: -5 };
+const ball = {
+  r: 6,
+  x: 0,
+  y: 0,
+  vx: 5,
+  vy: -5
+};
 
 /* ===== ブロック ===== */
-const rows = 5, cols = 7;
-const bw = 45, bh = 15, gap = 8;
+const rows = 5;
+const cols = 8;
+const blockH = 16;
+const gap = 6;
+let blockW;
 let blocks = [];
 
 function initBlocks() {
   blocks = [];
-  const totalW = cols * bw + (cols - 1) * gap;
-  const startX = (canvas.width - totalW) / 2;
-
+  blockW = (canvas.width - gap * (cols + 1)) / cols;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       blocks.push({
-        x: startX + c * (bw + gap),
-        y: 40 + r * (bh + gap),
+        x: gap + c * (blockW + gap),
+        y: 20 + r * (blockH + gap),
         alive: true
       });
     }
@@ -112,7 +133,7 @@ function initBlocks() {
 /* ===== リセット ===== */
 function reset() {
   paddle.x = (canvas.width - paddle.w) / 2;
-  paddle.y = canvas.height - 40;
+  paddle.y = canvas.height - 30;
   ball.x = canvas.width / 2;
   ball.y = canvas.height - 60;
   ball.vx = 5;
@@ -123,8 +144,8 @@ reset();
 
 /* ===== 操作 ===== */
 canvas.addEventListener("touchmove", e => {
-  const x = e.touches[0].clientX;
-  paddle.x = x - canvas.getBoundingClientRect().left - paddle.w / 2;
+  const rect = canvas.getBoundingClientRect();
+  paddle.x = e.touches[0].clientX - rect.left - paddle.w / 2;
 });
 
 /* ===== 描画 ===== */
@@ -143,7 +164,7 @@ function draw() {
   // ブロック
   ctx.fillStyle = "#4aa3ff";
   blocks.forEach(b => {
-    if (b.alive) ctx.fillRect(b.x, b.y, bw, bh);
+    if (b.alive) ctx.fillRect(b.x, b.y, blockW, blockH);
   });
 }
 
@@ -163,8 +184,8 @@ function update() {
 
   blocks.forEach(b => {
     if (b.alive &&
-        ball.x > b.x && ball.x < b.x + bw &&
-        ball.y > b.y && ball.y < b.y + bh) {
+        ball.x > b.x && ball.x < b.x + blockW &&
+        ball.y > b.y && ball.y < b.y + blockH) {
       b.alive = false;
       ball.vy *= -1;
     }
