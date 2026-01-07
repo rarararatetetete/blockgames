@@ -7,26 +7,37 @@
 <style>
   body {
     margin: 0;
-    background: linear-gradient(#0a1433, #020617);
+    background: #020617;
     color: white;
-    text-align: center;
     font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   h1 {
     margin: 16px 0;
   }
 
+  #gameWrap {
+    background: #020617;
+    padding: 10px;
+  }
+
   canvas {
     background: black;
-    display: block;
-    margin: 0 auto;
     border: 2px solid #1e3a8a;
+    width: 90vw;
+    max-width: 360px;
+    height: 70vh;
+    max-height: 520px;
   }
 
   #secret {
     display: none;
     margin-top: 10px;
+    width: 100%;
+    text-align: center;
   }
 
   #q {
@@ -41,20 +52,28 @@
 
 <h1 id="logo">BLOCK GAMES</h1>
 
-<canvas id="game" width="320" height="480"></canvas>
+<div id="gameWrap">
+  <canvas id="game"></canvas>
+</div>
 
 <div id="secret">
   <input id="q" placeholder="DuckDuckGo 検索">
 </div>
 
 <script>
-/* =====================
-   🎮 ゲーム本体
-===================== */
+/* ===== Canvas サイズ調整 ===== */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let ball = { x: 160, y: 240, vx: 3, vy: 4, r: 8 };
+function resize() {
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+/* ===== ゲーム ===== */
+let ball = { x: 50, y: 50, vx: 4, vy: 5, r: 8 };
 
 function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -72,12 +91,9 @@ function loop() {
 
   requestAnimationFrame(loop);
 }
-
 loop();
 
-/* =====================
-   👀 5回タップで隠し検索
-===================== */
+/* ===== 5回タップで検索 ===== */
 const logo = document.getElementById("logo");
 const secret = document.getElementById("secret");
 
@@ -102,19 +118,15 @@ logo.addEventListener("touchstart", () => {
   }
 });
 
-/* =====================
-   🔍 DuckDuckGo 一時検索
-===================== */
-document.getElementById("q").addEventListener("keydown", (e) => {
+/* ===== DuckDuckGo 一時検索 ===== */
+document.getElementById("q").addEventListener("keydown", e => {
   if (e.key === "Enter") {
     const q = encodeURIComponent(e.target.value);
-
     window.open(
       "https://duckduckgo.com/?q=" + q,
       "_blank",
       "noreferrer"
     );
-
     secret.style.display = "none";
     e.target.value = "";
   }
