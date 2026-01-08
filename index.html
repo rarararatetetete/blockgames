@@ -1,248 +1,215 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
 <title>BLOCK GAMES</title>
 
 <style>
 body {
   margin: 0;
-  background: #020824;
+  background: #0b1a33;
   color: white;
-  font-family: sans-serif;
+  font-family: system-ui;
   overflow: hidden;
 }
 header {
-  height: 70px;
-  background: #020824;
+  height: 60px;
+  background: #09162c;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
   position: relative;
 }
-#topRow, #bottomRow {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 10px;
-  font-size: 14px;
-}
 #logo {
-  text-align: center;
   font-weight: bold;
-  font-size: 18px;
+  font-size: 20px;
 }
-canvas {
-  display: block;
+#hiscore { position:absolute; left:10px; top:5px; }
+#stage { position:absolute; left:10px; top:30px; }
+#life { position:absolute; right:10px; top:5px; }
+#score { position:absolute; right:10px; top:30px; }
+#settingsBtn {
+  position:absolute;
+  right:50%;
+  top:5px;
+  transform: translateX(140px);
 }
-#fireworks, #credits {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
+canvas { display:block; }
+
+#settings, #search {
+  position:fixed;
+  inset:0;
+  background:#000c;
+  display:none;
+  z-index:10;
 }
-#credits {
-  display: none;
-  background: black;
-  color: white;
-  text-align: center;
-  font-size: 18px;
+.panel {
+  background:#112;
+  padding:20px;
+  margin:40px;
+  border-radius:12px;
 }
-#creditsContent {
-  position: absolute;
-  bottom: -100%;
-  width: 100%;
-  line-height: 2;
-}
+button { font-size:16px; }
 </style>
 </head>
 
 <body>
 
 <header>
-  <div id="topRow">
-    <span id="hiscore">HI: 0</span>
-    <span id="life">❤️❤️❤️❤️❤️</span>
-    <span id="score">SCORE: 0</span>
-  </div>
   <div id="logo">BLOCK GAMES</div>
-  <div id="bottomRow">
-    <span id="stage">STAGE 1</span>
-  </div>
+  <div id="hiscore">HI: 0</div>
+  <div id="stage">STAGE 1</div>
+  <div id="life">❤️❤️❤️❤️❤️</div>
+  <div id="score">SCORE 0</div>
+  <button id="settingsBtn">⚙️</button>
 </header>
 
 <canvas id="game"></canvas>
-<canvas id="fireworks"></canvas>
 
-<div id="credits">
-  <div id="creditsContent">
-    <h2>STAFF ROLL</h2>
-    <p>――――――――――</p>
+<div id="settings">
+  <div class="panel">
+    <h2>設定</h2>
+    BGM <input type="range" id="bgmVol" min="0" max="1" step="0.01"><br><br>
+    SE <input type="range" id="seVol" min="0" max="1" step="0.01"><br><br>
+    <button onclick="closeSettings()">閉じる</button>
+  </div>
+</div>
 
-    <p><strong>企画</strong><br>Yさん</p>
-    <p>「とりあえず作ってみよ」</p>
-
-    <p><strong>メインプログラム</strong><br>ChatGPT</p>
-    <p>「やりすぎなくらい本気」</p>
-
-    <p><strong>デザイン</strong><br>Yさん × ChatGPT</p>
-    <p>深夜テンション共同制作</p>
-
-    <p><strong>テストプレイ</strong><br>Yさん</p>
-    <p>無言で何度も死亡</p>
-
-    <p><strong>ボス調整</strong><br>ChatGPT</p>
-    <p>「これくらいでいいでしょ」<br>→ 全然よくなかった</p>
-
-    <p><strong>Special Thanks</strong><br>あなた</p>
-    <p>ここまで遊んでくれてありがとう</p>
-
-    <p style="margin-top:60px;font-size:24px;">THE END</p>
-    <p style="margin-top:40px;">画面タップで最初から</p>
+<div id="search">
+  <div class="panel">
+    <button onclick="closeSearch()">← 戻る</button>
+    <iframe src="https://duckduckgo.com" style="width:100%;height:80vh;border:none;"></iframe>
   </div>
 </div>
 
 <script>
-/* ===== CANVAS ===== */
+/* ========= 基本設定 ========= */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-const fx = document.getElementById("fireworks");
-const fctx = fx.getContext("2d");
-const headerH = 70;
+const headerH = 60;
 
 function resize(){
   canvas.width = innerWidth;
   canvas.height = innerHeight - headerH;
-  fx.width = innerWidth;
-  fx.height = innerHeight;
 }
-resize(); addEventListener("resize", resize);
+resize();
+addEventListener("resize", resize);
 
-/* ===== DATA ===== */
-let stage = 101; // ★テスト用：最初からボス戦
+/* ========= 状態 ========= */
+let stage = 1;
 let score = 0;
-let hiScore = Number(localStorage.hiScore || 0);
+let hi = Number(localStorage.getItem("hi")||0);
 let life = 5;
+document.getElementById("hiscore").textContent = "HI: "+hi;
 
-/* ===== UI ===== */
-const scoreEl = document.getElementById("score");
-const hiEl = document.getElementById("hiscore");
-const stageEl = document.getElementById("stage");
-const lifeEl = document.getElementById("life");
-
-/* ===== BALL ===== */
-let balls=[{x:0,y:0,vx:6,vy:-6,r:6}];
-
-/* ===== PADDLE ===== */
-const paddle = { w:100,h:12,x:0,y:0 };
-function resetPaddle(){
-  paddle.x = (canvas.width - paddle.w) / 2;
-  paddle.y = canvas.height - 20;
-}
-resetPaddle();
-
-/* ===== BOSS ===== */
-let boss={
-  x:canvas.width/2-80,
-  y:80,
-  w:160,
-  h:40,
-  hp:30,
-  vx:5
+/* ========= ロゴ5タップ ========= */
+let tap = 0;
+logo.onclick = ()=>{
+  tap++;
+  if(tap>=5){ openSearch(); tap=0; }
 };
 
-/* ===== FIREWORK ===== */
-function firework(big){
-  for(let i=0;i<(big?200:60);i++){
-    fctx.fillStyle=`hsl(${Math.random()*360},100%,60%)`;
-    fctx.beginPath();
-    fctx.arc(
-      Math.random()*fx.width,
-      Math.random()*fx.height/2,
-      Math.random()*3+1,
-      0,Math.PI*2
-    );
-    fctx.fill();
-  }
-  setTimeout(()=>fctx.clearRect(0,0,fx.width,fx.height),800);
-}
+/* ========= サウンド ========= */
+const bgm = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_8bdf5f3f9c.mp3");
+bgm.loop=true;
+bgm.volume=0.3;
+bgm.play();
 
-/* ===== TOUCH ===== */
-canvas.addEventListener("touchmove",e=>{
-  paddle.x=e.touches[0].clientX-paddle.w/2;
-});
+const se = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_64c97b8c0b.mp3");
 
-/* ===== LOOP ===== */
-function update(){
-  balls.forEach(ball=>{
-    ball.x+=ball.vx;
-    ball.y+=ball.vy;
+bgmVol.oninput=e=>bgm.volume=e.target.value;
+seVol.oninput=e=>se.volume=e.target.value;
 
-    if(ball.x<ball.r||ball.x>canvas.width-ball.r) ball.vx*=-1;
-    if(ball.y<ball.r) ball.vy*=-1;
+/* ========= ゲーム物体 ========= */
+let balls=[{x:200,y:300,vx:4,vy:-4}];
+let paddle={x:150,w:100};
+let blocks=[];
 
-    if(ball.y+ball.r>paddle.y&&ball.x>paddle.x&&ball.x<paddle.x+paddle.w){
-      ball.vy=-Math.abs(ball.vy);
+function makeBlocks(){
+  blocks=[];
+  const rows=5;
+  const cols=7;
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      blocks.push({
+        x:c*(canvas.width/cols),
+        y:r*30+20,
+        w:canvas.width/cols-4,
+        h:20,
+        color:`hsl(${Math.random()*360},100%,60%)`
+      });
     }
-
-    if(ball.x>boss.x&&ball.x<boss.x+boss.w&&ball.y>boss.y&&ball.y<boss.y+boss.h){
-      boss.hp--;
-      ball.vy*=-1;
-    }
-  });
-
-  boss.x+=boss.vx;
-  if(boss.x<0||boss.x+boss.w>canvas.width) boss.vx*=-1;
-
-  if(boss.hp<=0){
-    firework(true);
-    setTimeout(showCredits, 1200);
-    cancelAnimationFrame(loopId);
   }
 }
+makeBlocks();
 
-function draw(){
+/* ========= メインループ ========= */
+function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
+  // paddle
   ctx.fillStyle="white";
-  ctx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);
+  ctx.fillRect(paddle.x,canvas.height-20,paddle.w,10);
 
+  // balls
   balls.forEach(b=>{
+    b.x+=b.vx; b.y+=b.vy;
+    if(b.x<0||b.x>canvas.width) b.vx*=-1;
+    if(b.y<0) b.vy*=-1;
+    if(b.y>canvas.height){
+      life--;
+      balls=[{x:200,y:300,vx:4,vy:-4}];
+      if(life<=0){ stage=1; score=0; life=5; }
+    }
     ctx.beginPath();
-    ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+    ctx.arc(b.x,b.y,6,0,Math.PI*2);
     ctx.fill();
   });
 
-  ctx.fillStyle="red";
-  ctx.fillRect(boss.x,boss.y,boss.w,boss.h);
-  ctx.fillText("BOSS HP: "+boss.hp,boss.x,boss.y-6);
+  // blocks
+  blocks.forEach((bl,i)=>{
+    ctx.fillStyle=bl.color;
+    ctx.fillRect(bl.x,bl.y,bl.w,bl.h);
+    balls.forEach(b=>{
+      if(b.x>bl.x&&b.x<bl.x+bl.w&&b.y>bl.y&&b.y<bl.y+bl.h){
+        blocks.splice(i,1);
+        b.vy*=-1;
+        score+=100;
+        se.currentTime=0; se.play();
+      }
+    });
+  });
 
-  stageEl.textContent="STAGE 101";
-}
+  if(blocks.length===0){
+    stage++;
+    makeBlocks();
+  }
 
-let loopId;
-function loop(){
-  update();
-  draw();
-  loopId=requestAnimationFrame(loop);
+  document.getElementById("score").textContent="SCORE "+score;
+  document.getElementById("stage").textContent="STAGE "+stage;
+  document.getElementById("life").textContent="❤️".repeat(life);
+  hi=Math.max(hi,score);
+  localStorage.setItem("hi",hi);
+  document.getElementById("hiscore").textContent="HI: "+hi;
+
+  requestAnimationFrame(loop);
 }
 loop();
 
-/* ===== STAFF ROLL ===== */
-function showCredits(){
-  document.getElementById("credits").style.display="block";
-  const c=document.getElementById("creditsContent");
-  let pos=-innerHeight;
-  function scroll(){
-    pos+=0.5;
-    c.style.bottom=pos+"px";
-    if(pos<innerHeight*2) requestAnimationFrame(scroll);
-  }
-  scroll();
+/* ========= 操作 ========= */
+addEventListener("mousemove",e=>{
+  paddle.x=e.clientX-paddle.w/2;
+});
+addEventListener("touchmove",e=>{
+  paddle.x=e.touches[0].clientX-paddle.w/2;
+});
 
-  document.getElementById("credits").addEventListener("click",()=>{
-    location.reload();
-  });
-}
+/* ========= 設定・検索 ========= */
+settingsBtn.onclick=()=>settings.style.display="block";
+function closeSettings(){settings.style.display="none";}
+function openSearch(){search.style.display="block";}
+function closeSearch(){search.style.display="none";}
 </script>
 
 </body>
