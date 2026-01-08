@@ -102,7 +102,7 @@ document.addEventListener("click", () => {
 });
 
 /* ===== Canvas ===== */
-const canvas = document.getElementById("game");
+const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 const headerHeight = 60;
@@ -114,7 +114,6 @@ function resize() {
 
 resize();
 window.addEventListener("resize", resize);
-/* ===== パドル ===== */
 const paddle = {
   w: 100,
   h: 12,
