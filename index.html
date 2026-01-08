@@ -21,14 +21,18 @@ canvas{display:block}
 
 .overlay{
   position:fixed;inset:0;background:#000c;
-  display:none;z-index:10
+  display:none;z-index:10;
+  align-items:center;justify-content:center;
 }
 .panel{
-  background:#112;margin:40px;padding:20px;border-radius:12px
+  background:#112;padding:20px;border-radius:12px;
+  min-width:260px;
 }
-#staffText{
-  height:70vh;overflow:hidden;
+#errorText{
+  font-size:22px;
+  animation:blink 0.8s infinite;
 }
+@keyframes blink{50%{opacity:.3}}
 </style>
 </head>
 
@@ -37,7 +41,7 @@ canvas{display:block}
 <header>
   <div id="left">
     <div id="hiscore">HI: 0</div>
-    <div id="stage">STAGE 1</div>
+    <div id="stageLabel">STAGE 1</div>
   </div>
   <div id="center">
     <div id="logo">BLOCK GAMES</div>
@@ -51,70 +55,33 @@ canvas{display:block}
 
 <canvas id="game"></canvas>
 
-<!-- SETTINGS -->
+<!-- 🔍 検索 -->
+<div id="search" class="overlay">
+  <div class="panel">
+    <button onclick="closeSearch()">← 戻る</button>
+    <h3>検索（DuckDuckGo）</h3>
+    <input id="q" placeholder="検索ワード"
+      style="width:100%;padding:10px">
+    <button onclick="searchDDG()"
+      style="width:100%;margin-top:10px">検索</button>
+  </div>
+</div>
+
+<!-- ⚙️ 設定 -->
 <div id="settings" class="overlay">
   <div class="panel">
-    <h2>設定</h2>
-    BGM <input type="range" id="bgmVol" min="0" max="1" step="0.01"><br><br>
-    SE <input type="range" id="seVol" min="0" max="1" step="0.01"><br><br>
+    <h3>設定</h3>
     ステージ選択
     <select id="stageSelect"></select><br><br>
+    BGM <input type="range" id="bgmVol" min="0" max="1" step="0.01"><br>
+    SE <input type="range" id="seVol" min="0" max="1" step="0.01"><br><br>
     <button onclick="closeSettings()">閉じる</button>
   </div>
 </div>
 
-<!-- SEARCH -->
-<div id="search" class="overlay">
-  <div class="panel">
-    <button onclick="closeSearch()">← 戻る</button>
-    <iframe src="https://duckduckgo.com" style="width:100%;height:75vh;border:none;"></iframe>
-  </div>
-</div>
-
-<!-- STAFF -->
-<div id="staff" class="overlay">
-  <div class="panel" id="staffText">
-<pre id="staffContent">
-BLOCK GAMES
-
-制作
-Yさん
-（最初は「ちょっと作るだけ」って言ってた人）
-
-ゲーム設計
-ChatGPT
-（途中から引き返せなくなったAI）
-
-プログラム
-ChatGPT
-（バグを生み、バグを直し、また増やした）
-
-デバッグ担当
-Yさん
-（「なんかおかしいよw」を無限に言った）
-
-ディレクター
-Yさん
-（要望が毎回進化する）
-
-特殊効果
-ChatGPT
-（花火を爆発させすぎた）
-
-隠し検索ブラウザ発案
-Yさん
-（その発想どこから来た）
-
-ボス難易度調整
-未調整
-（でもHARD）
-
-ここまで遊んだあなたは
-本当にすごい。
-
-Thanks for Playing!
-</pre>
-  </div>
+<!-- ❌ 偽バグ画面 -->
+<div id="fakeError" class="overlay">
+  <div id="errorText">Error...<br>Rebooting...</div>
 </div>
 
 <script>
@@ -126,32 +93,34 @@ resize();addEventListener("resize",resize);
 /* ===== 状態 ===== */
 let stage=1,score=0,life=5;
 let hi=+localStorage.hi||0;
-let cleared=JSON.parse(localStorage.cleared||"[]");
 hiscore.textContent="HI: "+hi;
 
 /* ===== ロゴ5タップ ===== */
 let tap=0;
-logo.onclick=()=>{if(++tap>=5){openSearch();tap=0}}
+logo.onclick=()=>{ if(++tap>=5){openSearch();tap=0;} };
+
+/* ===== 検索 ===== */
+function searchDDG(){
+  const q=document.getElementById("q").value.trim();
+  if(q) window.open("https://duckduckgo.com/?q="+encodeURIComponent(q),"_blank");
+}
+function openSearch(){search.style.display="flex";}
+function closeSearch(){search.style.display="none";}
 
 /* ===== サウンド ===== */
 const bgm=new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_8bdf5f3f9c.mp3");
 bgm.loop=true;bgm.volume=0.3;bgm.play();
-const seHit=new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_64c97b8c0b.mp3");
-const seClear=new Audio("https://cdn.pixabay.com/audio/2021/08/04/audio_9c1a9d4c8f.mp3");
+const se=new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_64c97b8c0b.mp3");
 bgmVol.oninput=e=>bgm.volume=e.target.value;
-seVol.oninput=e=>seHit.volume=seClear.volume=e.target.value;
+seVol.oninput=e=>se.volume=e.target.value;
 
-/* ===== オブジェクト ===== */
+/* ===== ゲーム ===== */
 let paddle={x:200,w:100};
-let balls=[],blocks=[],boss=null;
-let fireworks=[];
+let balls=[],blocks=[];
+let secret=false;
 
-/* ===== 初期化 ===== */
 function setBalls(){
-  let n=stage>=75?3:stage>=50?2:1;
-  balls=[];
-  for(let i=0;i<n;i++)
-    balls.push({x:canvas.width/2,y:300,vx:5+i,vy:-5});
+  balls=[{x:canvas.width/2,y:300,vx:secret?10:6,vy:-6}];
 }
 function makeBlocks(){
   blocks=[];
@@ -160,134 +129,108 @@ function makeBlocks(){
       x:Math.random()*(canvas.width-60),
       y:Math.random()*200+40,
       w:60,h:20,
-      c:`hsl(${Math.random()*360},100%,60%)`
+      c:secret?"#000":`hsl(${Math.random()*360},100%,60%)`
     });
-}
-function makeBoss(){
-  boss={x:100,y:80,w:220,h:40,vx:4,hp:30,max:30};
 }
 
-/* ===== 花火 ===== */
-function fire(x,y){
-  for(let i=0;i<25;i++)
-    fireworks.push({
-      x,y,
-      vx:(Math.random()-0.5)*6,
-      vy:(Math.random()-0.5)*6,
-      l:60,
-      c:`hsl(${Math.random()*360},100%,60%)`
-    });
+function resetGame(){
+  setBalls();makeBlocks();
 }
+
+resetGame();
 
 /* ===== メイン ===== */
 function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // paddle
   ctx.fillStyle="#fff";
   ctx.fillRect(paddle.x,canvas.height-20,paddle.w,10);
 
-  // balls
   balls.forEach(b=>{
-    b.x+=b.vx; b.y+=b.vy;
+    b.x+=b.vx;b.y+=b.vy;
     if(b.x<0||b.x>canvas.width) b.vx*=-1;
     if(b.y<0) b.vy*=-1;
-    let py=canvas.height-20;
-    if(b.y+6>py&&b.x>paddle.x&&b.x<paddle.x+paddle.w){
+
+    if(b.y+6>canvas.height-20 &&
+      b.x>paddle.x && b.x<paddle.x+paddle.w){
       b.vy=-Math.abs(b.vy);
-      b.vx=(b.x-(paddle.x+paddle.w/2))/10;
     }
+
     if(b.y>canvas.height){
-      life--; setBalls();
-      if(life<=0){stage=1;score=0;life=5;makeBlocks();setBalls();}
+      life--;resetGame();
+      if(life<=0){stage=1;score=0;life=5;secret=false;}
     }
-    ctx.beginPath();ctx.arc(b.x,b.y,6,0,Math.PI*2);ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(b.x,b.y,6,0,Math.PI*2);
+    ctx.fill();
   });
 
-  // blocks
   blocks.forEach((bl,i)=>{
     ctx.fillStyle=bl.c;
     ctx.fillRect(bl.x,bl.y,bl.w,bl.h);
     balls.forEach(b=>{
       if(b.x>bl.x&&b.x<bl.x+bl.w&&b.y>bl.y&&b.y<bl.y+bl.h){
-        blocks.splice(i,1);b.vy*=-1;
-        score+=100;seHit.currentTime=0;seHit.play();
+        blocks.splice(i,1);
+        b.vy*=-1;
+        score+=secret?200:100;
+        se.currentTime=0;se.play();
       }
     });
   });
 
-  // boss
-  if(boss){
-    boss.x+=boss.vx;
-    if(boss.x<0||boss.x+boss.w>canvas.width) boss.vx*=-1;
-    ctx.fillStyle="red";
-    ctx.fillRect(boss.x,boss.y,boss.w,boss.h);
-    ctx.fillStyle="#fff";
-    ctx.fillRect(20,20,(boss.hp/boss.max)*(canvas.width-40),6);
-    balls.forEach(b=>{
-      if(b.x>boss.x&&b.x<boss.x+boss.w&&b.y>boss.y&&b.y<boss.y+boss.h){
-        boss.hp--;b.vy*=-1;fire(b.x,b.y);
-        if(boss.hp<=0){
-          seClear.play();
-          fire(canvas.width/2,canvas.height/2);
-          setTimeout(()=>staff.style.display="block",2000);
-          boss=null;
-        }
-      }
-    });
+  if(blocks.length===0){
+    stage++;secret=false;resetGame();
   }
 
-  // fireworks
-  fireworks.forEach((f,i)=>{
-    f.x+=f.vx;f.y+=f.vy;f.l--;
-    ctx.fillStyle=f.c;
-    ctx.fillRect(f.x,f.y,3,3);
-    if(f.l<=0) fireworks.splice(i,1);
-  });
-
-  if(blocks.length===0&&!boss){
-    cleared.push(stage);localStorage.cleared=JSON.stringify(cleared);
-    fire(canvas.width/2,canvas.height/2);
-    stage++;
-    if(stage===101) makeBoss();
-    else{makeBlocks();setBalls();}
-  }
-
-  scoreEl();
-  requestAnimationFrame(loop);
-}
-
-function scoreEl(){
   score.textContent="SCORE "+score;
-  stage.textContent="STAGE "+stage;
+  stageLabel.textContent="STAGE "+stage;
   life.textContent="❤️".repeat(life);
   hi=Math.max(hi,score);localStorage.hi=hi;
   hiscore.textContent="HI: "+hi;
-}
 
-makeBlocks();setBalls();loop();
+  requestAnimationFrame(loop);
+}
+loop();
 
 /* ===== 操作 ===== */
 addEventListener("mousemove",e=>paddle.x=e.clientX-paddle.w/2);
 addEventListener("touchmove",e=>paddle.x=e.touches[0].clientX-paddle.w/2);
 
-/* ===== UI ===== */
+/* ===== 設定 & 偽バグ ===== */
+let selectCount=0;
 settingsBtn.onclick=()=>{
   stageSelect.innerHTML="";
-  cleared.forEach(s=>{
+  for(let i=1;i<=Math.max(stage,20);i++){
     let o=document.createElement("option");
-    o.value=s;o.textContent="STAGE "+s;
+    o.value=i;o.textContent="STAGE "+i;
     stageSelect.appendChild(o);
-  });
-  settings.style.display="block";
+  }
+  settings.style.display="flex";
 };
+
 stageSelect.onchange=e=>{
+  if(+e.target.value===13){
+    selectCount++;
+    if(selectCount>=3){
+      settings.style.display="none";
+      fakeError.style.display="flex";
+      setTimeout(()=>{
+        fakeError.style.display="none";
+        secret=true;
+        stage=999;
+        resetGame();
+      },1500);
+      selectCount=0;
+      return;
+    }
+  } else selectCount=0;
+
   stage=+e.target.value;
-  makeBlocks();setBalls();settings.style.display="none";
+  resetGame();
 };
+
 function closeSettings(){settings.style.display="none";}
-function openSearch(){search.style.display="block";}
-function closeSearch(){search.style.display="none";}
 </script>
 
 </body>
