@@ -1,0 +1,15 @@
+{
+  "name": "BLOCK GAMES",
+  "short_name": "BLOCK",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#020824",
+  "theme_color": "#020824",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
