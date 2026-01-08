@@ -57,7 +57,7 @@
 </head>
 
 <body>
-
+<div id="score">SCORE : 0</div>
 <header>BLOCK GAMES</header>
 
 <div id="gameScreen">
@@ -71,6 +71,8 @@
 </div>
 
 <script>
+  let score = 0;
+const scoreEl = document.getElementById("score");
 /* ===== 5回タップで切り替え ===== */
 let taps = 0;
 document.addEventListener("click", () => {
@@ -198,6 +200,7 @@ function update() {
         ball.y > b.y && ball.y < b.y + blockH) {
       b.alive = false;
       ball.vy *= -1;
+      addScore(10);
     }
   });
 
