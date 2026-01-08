@@ -196,19 +196,26 @@ function update() {
   if (ball.x < ball.r || ball.x > canvas.width - ball.r) ball.vx *= -1;
   if (ball.y < ball.r) ball.vy *= -1;
 
-  if (
-    ball.y + ball.r > paddle.y &&
-    ball.x > paddle.x &&
-    ball.x < paddle.x + paddle.w
-  ) ball.vy *= -1;
-
+ if (
+  ball.y + ball.r > paddle.y &&
+  ball.y < paddle.y + paddle.h &&
+  ball.x > paddle.x &&
+  ball.x < paddle.x + paddle.w
+) {
+  ball.vy = -Math.abs(ball.vy);
+  ball.y = paddle.y - ball.r;
+ }
   blocks.forEach(b => {
     if (b.alive &&
-        ball.x > b.x && ball.x < b.x + blockW &&
-        ball.y > b.y && ball.y < b.y + blockH) {
-      b.alive = false;
-      ball.vy *= -1;
-      addScore(10);
+  ball.x + ball.r > b.x &&
+  ball.x - ball.r < b.x + blockW &&
+  ball.y + ball.r > b.y &&
+  ball.y - ball.r < b.y + blockH
+) {
+  b.alive = false;
+  ball.vy *= -1;
+  ball.y += ball.vy;
+  addScore(10);
     }
   });
 
