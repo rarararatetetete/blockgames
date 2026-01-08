@@ -10,6 +10,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
+  header {
+  height: 60px;
+  line-height: 60px;
+  font-size: 20px;
+  background: #020824;
+  }
   body {
     margin: 0;
     background: #020824;
@@ -96,13 +102,15 @@ document.addEventListener("click", () => {
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+const headerHeight = 60;
+
 function resize() {
   canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight - 40;
+  canvas.height = window.innerHeight - headerHeight;
 }
+
 resize();
 window.addEventListener("resize", resize);
-
 /* ===== パドル ===== */
 const paddle = {
   w: 100,
