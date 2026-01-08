@@ -156,9 +156,19 @@ function loop(){
       b.vy=-Math.abs(b.vy);
     }
 
-    if(b.y>canvas.height){
-      life--;resetGame();
-      if(life<=0){stage=1;score=0;life=5;secret=false;}
+    if(b.y > canvas.height){
+  life--;
+
+  if(life <= 0){
+    // ゲームオーバー処理
+    stage = 1;
+    score = 0;
+    life = 5;
+    secret = false;
+  }
+
+  // ボールだけ初期位置に戻す
+  setBalls();
     }
 
     ctx.beginPath();
