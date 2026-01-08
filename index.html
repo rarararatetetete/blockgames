@@ -2,211 +2,332 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BLOCK GAMES</title>
-  <link rel="manifest" href="manifest.json">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<style>
-  header {
-  height: 60px;
-  font-size: 20px;
-  background: #020824;
 
-  display: flex;
+<style>
+body {
+  margin: 0;
+  background: #020824;
+  color: white;
+  overflow: hidden;
+  font-family: sans-serif;
+}
+
+header {
+  height: 60px;
+  line-height: 60px;
+  text-align: center;
+  font-weight: bold;
+  background: #020824;
+  position: relative;
+  user-select: none;
+}
+
+#score, #hiscore {
+  position: absolute;
+  top: 0;
+  font-size: 14px;
+}
+
+#score { right: 12px; }
+#hiscore { left: 12px; }
+
+canvas {
+  display: block;
+  background: #020824;
+}
+
+#clear {
+  position: fixed;
+  inset: 0;
+  background: rgba(2,8,36,0.85);
+  display: none;
   align-items: center;
   justify-content: center;
-  }
-  body {
-    margin: 0;
-    background: #020824;
-    color: white;
-    font-family: sans-serif;
-    overflow: hidden;
-  }
+  flex-direction: column;
+  z-index: 10;
+}
 
-  header {
-    text-align: center;
-    padding: 10px 0;
-    font-weight: bold;
-  }
+#clear h1 {
+  font-size: 32px;
+}
 
-  #gameScreen, #searchScreen {
-    position: absolute;
-    top: 40px;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-
-  #searchScreen {
-    display: none;
-    flex-direction: column;
-  }
-
-  canvas {
-    background: black;
-    touch-action: none;
-  }
-
-  input {
-    width: 80%;
-    max-width: 400px;
-    padding: 12px;
-    font-size: 18px;
-    border-radius: 8px;
-    border: none;
-  }
+#clear button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background: none;
+  border: 1px solid white;
+  color: white;
+  border-radius: 8px;
+}
 </style>
 </head>
 
 <body>
-<div id="score">SCORE : 0</div>
-<header>BLOCK GAMES</header>
+<header id="logo">
+  BLOCK GAMES
+  <span id="hiscore">HI: 0</span>
+  <span id="score">SCORE: 0</span>
+</header>
 
-<div id="gameScreen">
-  <canvas id="game"></canvas>
-</div>
+<canvas id="gameCanvas"></canvas>
 
-<div id="searchScreen">
-  <form action="https://duckduckgo.com/" method="GET">
-    <input name="q" placeholder="Search…" autofocus>
-  </form>
+<div id="clear">
+  <h1>CLEAR!</h1>
+  <button onclick="restart()">もう一回</button>
 </div>
 
 <script>
-  let score = 0;
-const scoreEl = document.getElementById("score");
-/* ===== 5回タップで切り替え ===== */
-let taps = 0;
-document.addEventListener("click", () => {
-  taps++;
-  if (taps >= 5) {
-    taps = 0;
-
-    if (searchScreen.style.display === "flex") {
-      // 検索 → ゲーム
-      searchScreen.style.display = "none";
-      gameScreen.style.display = "flex";
-    } else {
-      // ゲーム → 検索
-      gameScreen.style.display = "none";
-      searchScreen.style.display = "flex";
-    }
-  }
-});
 /* ===== Canvas ===== */
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-
-/* ヘッダー高さ */
 const headerHeight = 60;
 
-/* ===== パドル ===== */
-const paddle = {
-  w: 100,
-  h: 12,
-  x: 0,
-  y: 0
-};
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight - headerHeight;
+  resetPaddle();
+}
+window.addEventListener("resize", resize);
 
+/* ===== スコア ===== */
+let score = 0;
+let hiScore = Number(localStorage.getItem("hiScore")) || 0;
+const scoreEl = document.getElementById("score");
+const hiScoreEl = document.getElementById("hiscore");
+
+function updateScore() {
+  scoreEl.textContent = "SCORE: " + score;
+  if (score > hiScore) {
+    hiScore = score;
+    localStorage.setItem("hiScore", hiScore);
+    hiScoreEl.textContent = "HI: " + hiScore;
+  }
+}
+
+/* ===== Audio ===== */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+/* 効果音 */
+function popSound() {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.frequency.value = 600;
+  gain.gain.value = 0.08;
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.05);
+}
+
+/* BGM（リラックス系） */
+let bgmOsc, bgmGain;
+function startBGM() {
+  if (bgmOsc) return;
+  bgmOsc = audioCtx.createOscillator();
+  bgmGain = audioCtx.createGain();
+  bgmOsc.type = "sine";
+  bgmOsc.frequency.value = 220;
+  bgmGain.gain.value = 0.03;
+  bgmOsc.connect(bgmGain).connect(audioCtx.destination);
+  bgmOsc.start();
+
+  setInterval(() => {
+    bgmOsc.frequency.setValueAtTime(
+      180 + Math.random() * 80,
+      audioCtx.currentTime
+    );
+  }, 3000);
+}
+
+/* ===== 難易度 ===== */
+let speed = 4;
+function updateDifficulty() {
+  if (score >= 8000) speed = 7;
+  else if (score >= 5000) speed = 6;
+  else if (score >= 3000) speed = 5.5;
+  else if (score >= 1000) speed = 5;
+  else speed = 4;
+
+  ball.vx = Math.sign(ball.vx) * speed;
+  ball.vy = Math.sign(ball.vy) * speed;
+}
+
+/* ===== パドル ===== */
+const paddle = { w: 100, h: 12, x: 0, y: 0 };
 function resetPaddle() {
   paddle.x = (canvas.width - paddle.w) / 2;
   paddle.y = canvas.height - paddle.h - 10;
 }
 
 /* ===== ボール ===== */
-const ball = {
-  r: 6,
-  x: 0,
-  y: 0,
-  vx: 4,
-  vy: -4
-};
-
+const ball = { r: 6, x: 0, y: 0, vx: speed, vy: -speed };
 function resetBall() {
   ball.x = canvas.width / 2;
   ball.y = canvas.height / 2;
-  ball.vx = 4 * (Math.random() > 0.5 ? 1 : -1);
-  ball.vy = -4;
+  ball.vx = speed * (Math.random() > 0.5 ? 1 : -1);
+  ball.vy = -speed;
 }
 
-/* ===== リサイズ ===== */
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight - headerHeight;
-  resetPaddle();
-}
+/* ===== ブロック（虹色） ===== */
+const blocks = [];
+const rows = 5;
+const cols = 7;
+const blockHeight = 20;
 
-resize();
-window.addEventListener("resize", resize);
-
-/* ===== タッチ操作 ===== */
-canvas.addEventListener("touchmove", e => {
-  const rect = canvas.getBoundingClientRect();
-  paddle.x = e.touches[0].clientX - rect.left - paddle.w / 2;
-
-  // 画面外に出ないように
-  if (paddle.x < 0) paddle.x = 0;
-  if (paddle.x + paddle.w > canvas.width) {
-    paddle.x = canvas.width - paddle.w;
+function createBlocks() {
+  blocks.length = 0;
+  const bw = canvas.width / cols;
+  for (let r = 0; r < rows; r++) {
+    const hue = (r / rows) * 360;
+    for (let c = 0; c < cols; c++) {
+      blocks.push({
+        x: c * bw,
+        y: r * blockHeight + 30,
+        w: bw - 2,
+        h: blockHeight - 2,
+        alive: true,
+        color: `hsl(${hue}, 80%, 60%)`
+      });
+    }
   }
+}
+
+/* ===== 花火 ===== */
+const fireworks = [];
+function launchFirework() {
+  for (let i = 0; i < 120; i++) {
+    fireworks.push({
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      vx: (Math.random() - 0.5) * 8,
+      vy: (Math.random() - 0.5) * 8,
+      life: 60
+    });
+  }
+}
+
+/* ===== 操作 ===== */
+canvas.addEventListener("touchstart", () => startBGM(), { once: true });
+canvas.addEventListener("touchmove", e => {
+  paddle.x = e.touches[0].clientX - paddle.w / 2;
+  paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, paddle.x));
 });
 
-/* ===== 描画 ===== */
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+/* ===== ゲーム ===== */
+let cleared = false;
 
-  // パドル
-  ctx.fillStyle = "white";
-  ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
-
-  // ボール
-  ctx.beginPath();
-  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-/* ===== 更新 ===== */
 function update() {
+  if (cleared) return;
+
   ball.x += ball.vx;
   ball.y += ball.vy;
 
-  // 壁反射
-  if (ball.x < ball.r || ball.x > canvas.width - ball.r) {
-    ball.vx *= -1;
-  }
-  if (ball.y < ball.r) {
-    ball.vy *= -1;
-  }
+  if (ball.x < ball.r || ball.x > canvas.width - ball.r) ball.vx *= -1;
+  if (ball.y < ball.r) ball.vy *= -1;
 
-  // パドル反射
   if (
     ball.y + ball.r > paddle.y &&
     ball.x > paddle.x &&
     ball.x < paddle.x + paddle.w
   ) {
     ball.vy = -Math.abs(ball.vy);
-    ball.y = paddle.y - ball.r;
   }
 
-  // 落下
+  blocks.forEach(b => {
+    if (!b.alive) return;
+    if (
+      ball.x > b.x &&
+      ball.x < b.x + b.w &&
+      ball.y - ball.r < b.y + b.h &&
+      ball.y + ball.r > b.y
+    ) {
+      b.alive = false;
+      ball.vy *= -1;
+      score += 10;
+      popSound();
+      updateDifficulty();
+      updateScore();
+    }
+  });
+
+  if (score >= 10000) {
+    cleared = true;
+    document.getElementById("clear").style.display = "flex";
+    launchFirework();
+  }
+
   if (ball.y > canvas.height) {
+    score = 0;
+    speed = 4;
+    updateScore();
     resetBall();
   }
 }
 
-/* ===== ループ ===== */
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "white";
+  ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  ctx.fill();
+
+  blocks.forEach(b => {
+    if (!b.alive) return;
+    ctx.fillStyle = b.color;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+  });
+
+  fireworks.forEach(f => {
+    ctx.fillStyle = "white";
+    ctx.fillRect(f.x, f.y, 2, 2);
+    f.x += f.vx;
+    f.y += f.vy;
+    f.life--;
+  });
+
+  for (let i = fireworks.length - 1; i >= 0; i--) {
+    if (fireworks[i].life <= 0) fireworks.splice(i, 1);
+  }
+}
+
 function loop() {
   update();
   draw();
   requestAnimationFrame(loop);
 }
 
+function restart() {
+  score = 0;
+  speed = 4;
+  cleared = false;
+  updateScore();
+  createBlocks();
+  resetBall();
+  fireworks.length = 0;
+  document.getElementById("clear").style.display = "none";
+}
+
+/* ===== 隠し検索 ===== */
+let tapCount = 0;
+let tapTimer = null;
+document.getElementById("logo").addEventListener("click", () => {
+  tapCount++;
+  if (tapTimer) clearTimeout(tapTimer);
+  tapTimer = setTimeout(() => tapCount = 0, 1500);
+  if (tapCount === 5) location.href = "https://duckduckgo.com";
+});
+
+/* ===== start ===== */
+hiScoreEl.textContent = "HI: " + hiScore;
+resize();
+createBlocks();
 resetBall();
+updateScore();
 loop();
+</script>
+</body>
+</html>
