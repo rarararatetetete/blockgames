@@ -1,155 +1,190 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>BLOCK GAMES</title>
 
 <style>
-body {
-  margin: 0;
-  background: #0b1a33;
-  color: white;
-  font-family: system-ui;
-  overflow: hidden;
+body{margin:0;background:#0b1a33;color:#fff;font-family:system-ui;overflow:hidden}
+header{
+  height:64px;background:#09162c;
+  display:grid;grid-template-columns:1fr auto 1fr;
+  align-items:center;padding:0 10px
 }
-header {
-  height: 60px;
-  background: #09162c;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-#logo {
-  font-weight: bold;
-  font-size: 20px;
-}
-#hiscore { position:absolute; left:10px; top:5px; }
-#stage { position:absolute; left:10px; top:30px; }
-#life { position:absolute; right:10px; top:5px; }
-#score { position:absolute; right:10px; top:30px; }
-#settingsBtn {
-  position:absolute;
-  right:50%;
-  top:5px;
-  transform: translateX(140px);
-}
-canvas { display:block; }
+#left,#center,#right{display:flex;flex-direction:column;gap:4px}
+#center{align-items:center}
+#right{align-items:flex-end}
+#logo{font-size:20px;font-weight:bold}
+#settingsBtn{background:none;border:none;color:#fff;font-size:18px}
+canvas{display:block}
 
-#settings, #search {
-  position:fixed;
-  inset:0;
-  background:#000c;
-  display:none;
-  z-index:10;
+.overlay{
+  position:fixed;inset:0;background:#000c;
+  display:none;z-index:10
 }
-.panel {
-  background:#112;
-  padding:20px;
-  margin:40px;
-  border-radius:12px;
+.panel{
+  background:#112;margin:40px;padding:20px;border-radius:12px
 }
-button { font-size:16px; }
+#staffText{
+  height:70vh;overflow:hidden;
+}
 </style>
 </head>
 
 <body>
 
 <header>
-  <div id="logo">BLOCK GAMES</div>
-  <div id="hiscore">HI: 0</div>
-  <div id="stage">STAGE 1</div>
-  <div id="life">❤️❤️❤️❤️❤️</div>
-  <div id="score">SCORE 0</div>
-  <button id="settingsBtn">⚙️</button>
+  <div id="left">
+    <div id="hiscore">HI: 0</div>
+    <div id="stage">STAGE 1</div>
+  </div>
+  <div id="center">
+    <div id="logo">BLOCK GAMES</div>
+  </div>
+  <div id="right">
+    <button id="settingsBtn">⚙️</button>
+    <div id="life">❤️❤️❤️❤️❤️</div>
+    <div id="score">SCORE 0</div>
+  </div>
 </header>
 
 <canvas id="game"></canvas>
 
-<div id="settings">
+<!-- SETTINGS -->
+<div id="settings" class="overlay">
   <div class="panel">
     <h2>設定</h2>
     BGM <input type="range" id="bgmVol" min="0" max="1" step="0.01"><br><br>
     SE <input type="range" id="seVol" min="0" max="1" step="0.01"><br><br>
+    ステージ選択
+    <select id="stageSelect"></select><br><br>
     <button onclick="closeSettings()">閉じる</button>
   </div>
 </div>
 
-<div id="search">
+<!-- SEARCH -->
+<div id="search" class="overlay">
   <div class="panel">
     <button onclick="closeSearch()">← 戻る</button>
-    <iframe src="https://duckduckgo.com" style="width:100%;height:80vh;border:none;"></iframe>
+    <iframe src="https://duckduckgo.com" style="width:100%;height:75vh;border:none;"></iframe>
+  </div>
+</div>
+
+<!-- STAFF -->
+<div id="staff" class="overlay">
+  <div class="panel" id="staffText">
+<pre id="staffContent">
+BLOCK GAMES
+
+制作
+Yさん
+（最初は「ちょっと作るだけ」って言ってた人）
+
+ゲーム設計
+ChatGPT
+（途中から引き返せなくなったAI）
+
+プログラム
+ChatGPT
+（バグを生み、バグを直し、また増やした）
+
+デバッグ担当
+Yさん
+（「なんかおかしいよw」を無限に言った）
+
+ディレクター
+Yさん
+（要望が毎回進化する）
+
+特殊効果
+ChatGPT
+（花火を爆発させすぎた）
+
+隠し検索ブラウザ発案
+Yさん
+（その発想どこから来た）
+
+ボス難易度調整
+未調整
+（でもHARD）
+
+ここまで遊んだあなたは
+本当にすごい。
+
+Thanks for Playing!
+</pre>
   </div>
 </div>
 
 <script>
-/* ========= 基本設定 ========= */
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const headerH = 60;
+/* ===== 基本 ===== */
+const canvas=game,ctx=canvas.getContext("2d"),H=64;
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight-H}
+resize();addEventListener("resize",resize);
 
-function resize(){
-  canvas.width = innerWidth;
-  canvas.height = innerHeight - headerH;
-}
-resize();
-addEventListener("resize", resize);
+/* ===== 状態 ===== */
+let stage=1,score=0,life=5;
+let hi=+localStorage.hi||0;
+let cleared=JSON.parse(localStorage.cleared||"[]");
+hiscore.textContent="HI: "+hi;
 
-/* ========= 状態 ========= */
-let stage = 1;
-let score = 0;
-let hi = Number(localStorage.getItem("hi")||0);
-let life = 5;
-document.getElementById("hiscore").textContent = "HI: "+hi;
+/* ===== ロゴ5タップ ===== */
+let tap=0;
+logo.onclick=()=>{if(++tap>=5){openSearch();tap=0}}
 
-/* ========= ロゴ5タップ ========= */
-let tap = 0;
-logo.onclick = ()=>{
-  tap++;
-  if(tap>=5){ openSearch(); tap=0; }
-};
-
-/* ========= サウンド ========= */
-const bgm = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_8bdf5f3f9c.mp3");
-bgm.loop=true;
-bgm.volume=0.3;
-bgm.play();
-
-const se = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_64c97b8c0b.mp3");
-
+/* ===== サウンド ===== */
+const bgm=new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_8bdf5f3f9c.mp3");
+bgm.loop=true;bgm.volume=0.3;bgm.play();
+const seHit=new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_64c97b8c0b.mp3");
+const seClear=new Audio("https://cdn.pixabay.com/audio/2021/08/04/audio_9c1a9d4c8f.mp3");
 bgmVol.oninput=e=>bgm.volume=e.target.value;
-seVol.oninput=e=>se.volume=e.target.value;
+seVol.oninput=e=>seHit.volume=seClear.volume=e.target.value;
 
-/* ========= ゲーム物体 ========= */
-let balls=[{x:200,y:300,vx:4,vy:-4}];
-let paddle={x:150,w:100};
-let blocks=[];
+/* ===== オブジェクト ===== */
+let paddle={x:200,w:100};
+let balls=[],blocks=[],boss=null;
+let fireworks=[];
 
+/* ===== 初期化 ===== */
+function setBalls(){
+  let n=stage>=75?3:stage>=50?2:1;
+  balls=[];
+  for(let i=0;i<n;i++)
+    balls.push({x:canvas.width/2,y:300,vx:5+i,vy:-5});
+}
 function makeBlocks(){
   blocks=[];
-  const rows=5;
-  const cols=7;
-  for(let r=0;r<rows;r++){
-    for(let c=0;c<cols;c++){
-      blocks.push({
-        x:c*(canvas.width/cols),
-        y:r*30+20,
-        w:canvas.width/cols-4,
-        h:20,
-        color:`hsl(${Math.random()*360},100%,60%)`
-      });
-    }
-  }
+  for(let i=0;i<20;i++)
+    blocks.push({
+      x:Math.random()*(canvas.width-60),
+      y:Math.random()*200+40,
+      w:60,h:20,
+      c:`hsl(${Math.random()*360},100%,60%)`
+    });
 }
-makeBlocks();
+function makeBoss(){
+  boss={x:100,y:80,w:220,h:40,vx:4,hp:30,max:30};
+}
 
-/* ========= メインループ ========= */
+/* ===== 花火 ===== */
+function fire(x,y){
+  for(let i=0;i<25;i++)
+    fireworks.push({
+      x,y,
+      vx:(Math.random()-0.5)*6,
+      vy:(Math.random()-0.5)*6,
+      l:60,
+      c:`hsl(${Math.random()*360},100%,60%)`
+    });
+}
+
+/* ===== メイン ===== */
 function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   // paddle
-  ctx.fillStyle="white";
+  ctx.fillStyle="#fff";
   ctx.fillRect(paddle.x,canvas.height-20,paddle.w,10);
 
   // balls
@@ -157,56 +192,99 @@ function loop(){
     b.x+=b.vx; b.y+=b.vy;
     if(b.x<0||b.x>canvas.width) b.vx*=-1;
     if(b.y<0) b.vy*=-1;
-    if(b.y>canvas.height){
-      life--;
-      balls=[{x:200,y:300,vx:4,vy:-4}];
-      if(life<=0){ stage=1; score=0; life=5; }
+    let py=canvas.height-20;
+    if(b.y+6>py&&b.x>paddle.x&&b.x<paddle.x+paddle.w){
+      b.vy=-Math.abs(b.vy);
+      b.vx=(b.x-(paddle.x+paddle.w/2))/10;
     }
-    ctx.beginPath();
-    ctx.arc(b.x,b.y,6,0,Math.PI*2);
-    ctx.fill();
+    if(b.y>canvas.height){
+      life--; setBalls();
+      if(life<=0){stage=1;score=0;life=5;makeBlocks();setBalls();}
+    }
+    ctx.beginPath();ctx.arc(b.x,b.y,6,0,Math.PI*2);ctx.fill();
   });
 
   // blocks
   blocks.forEach((bl,i)=>{
-    ctx.fillStyle=bl.color;
+    ctx.fillStyle=bl.c;
     ctx.fillRect(bl.x,bl.y,bl.w,bl.h);
     balls.forEach(b=>{
       if(b.x>bl.x&&b.x<bl.x+bl.w&&b.y>bl.y&&b.y<bl.y+bl.h){
-        blocks.splice(i,1);
-        b.vy*=-1;
-        score+=100;
-        se.currentTime=0; se.play();
+        blocks.splice(i,1);b.vy*=-1;
+        score+=100;seHit.currentTime=0;seHit.play();
       }
     });
   });
 
-  if(blocks.length===0){
-    stage++;
-    makeBlocks();
+  // boss
+  if(boss){
+    boss.x+=boss.vx;
+    if(boss.x<0||boss.x+boss.w>canvas.width) boss.vx*=-1;
+    ctx.fillStyle="red";
+    ctx.fillRect(boss.x,boss.y,boss.w,boss.h);
+    ctx.fillStyle="#fff";
+    ctx.fillRect(20,20,(boss.hp/boss.max)*(canvas.width-40),6);
+    balls.forEach(b=>{
+      if(b.x>boss.x&&b.x<boss.x+boss.w&&b.y>boss.y&&b.y<boss.y+boss.h){
+        boss.hp--;b.vy*=-1;fire(b.x,b.y);
+        if(boss.hp<=0){
+          seClear.play();
+          fire(canvas.width/2,canvas.height/2);
+          setTimeout(()=>staff.style.display="block",2000);
+          boss=null;
+        }
+      }
+    });
   }
 
-  document.getElementById("score").textContent="SCORE "+score;
-  document.getElementById("stage").textContent="STAGE "+stage;
-  document.getElementById("life").textContent="❤️".repeat(life);
-  hi=Math.max(hi,score);
-  localStorage.setItem("hi",hi);
-  document.getElementById("hiscore").textContent="HI: "+hi;
+  // fireworks
+  fireworks.forEach((f,i)=>{
+    f.x+=f.vx;f.y+=f.vy;f.l--;
+    ctx.fillStyle=f.c;
+    ctx.fillRect(f.x,f.y,3,3);
+    if(f.l<=0) fireworks.splice(i,1);
+  });
 
+  if(blocks.length===0&&!boss){
+    cleared.push(stage);localStorage.cleared=JSON.stringify(cleared);
+    fire(canvas.width/2,canvas.height/2);
+    stage++;
+    if(stage===101) makeBoss();
+    else{makeBlocks();setBalls();}
+  }
+
+  scoreEl();
   requestAnimationFrame(loop);
 }
-loop();
 
-/* ========= 操作 ========= */
-addEventListener("mousemove",e=>{
-  paddle.x=e.clientX-paddle.w/2;
-});
-addEventListener("touchmove",e=>{
-  paddle.x=e.touches[0].clientX-paddle.w/2;
-});
+function scoreEl(){
+  score.textContent="SCORE "+score;
+  stage.textContent="STAGE "+stage;
+  life.textContent="❤️".repeat(life);
+  hi=Math.max(hi,score);localStorage.hi=hi;
+  hiscore.textContent="HI: "+hi;
+}
 
-/* ========= 設定・検索 ========= */
-settingsBtn.onclick=()=>settings.style.display="block";
+makeBlocks();setBalls();loop();
+
+/* ===== 操作 ===== */
+addEventListener("mousemove",e=>paddle.x=e.clientX-paddle.w/2);
+addEventListener("touchmove",e=>paddle.x=e.touches[0].clientX-paddle.w/2);
+
+/* ===== UI ===== */
+settingsBtn.onclick=()=>{
+  stageSelect.innerHTML="";
+  cleared.forEach(s=>{
+    let o=document.createElement("option");
+    o.value=s;o.textContent="STAGE "+s;
+    stageSelect.appendChild(o);
+  });
+  settings.style.display="block";
+};
+stageSelect.onchange=e=>{
+  stage=+e.target.value;
+  makeBlocks();setBalls();settings.style.display="none";
+};
 function closeSettings(){settings.style.display="none";}
 function openSearch(){search.style.display="block";}
 function closeSearch(){search.style.display="none";}
