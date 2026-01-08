@@ -60,10 +60,8 @@ canvas{display:block}
   <div class="panel">
     <button onclick="closeSearch()">← 戻る</button>
     <h3>検索（DuckDuckGo）</h3>
-    <input id="q" placeholder="検索ワード"
-      style="width:100%;padding:10px">
-    <button onclick="searchDDG()"
-      style="width:100%;margin-top:10px">検索</button>
+    <input id="q" placeholder="検索ワード" style="width:100%;padding:10px">
+    <button onclick="searchDDG()" style="width:100%;margin-top:10px">検索</button>
   </div>
 </div>
 
@@ -79,7 +77,7 @@ canvas{display:block}
   </div>
 </div>
 
-<!-- ❌ 偽バグ画面 -->
+<!-- ❌ 偽バグ -->
 <div id="fakeError" class="overlay">
   <div id="errorText">Error...<br>Rebooting...</div>
 </div>
@@ -93,6 +91,7 @@ resize();addEventListener("resize",resize);
 /* ===== 状態 ===== */
 let stage=1,score=0,life=5;
 let hi=+localStorage.hi||0;
+let unlockAll = localStorage.unlockAll==="1";
 hiscore.textContent="HI: "+hi;
 
 /* ===== ロゴ5タップ ===== */
@@ -120,7 +119,7 @@ let balls=[],blocks=[];
 let secret=false;
 
 function setBalls(){
-  balls=[{x:canvas.width/2,y:300,vx:secret?10:6,vy:-6}];
+  balls=[{x:canvas.width/2,y:300,vx:secret?10:6,vy:-6,r:6}];
 }
 function makeBlocks(){
   blocks=[];
@@ -134,120 +133,93 @@ function makeBlocks(){
 }
 
 function resetGame(){
-  setBalls();makeBlocks();
+  setBalls();
+  makeBlocks();
 }
 
 resetGame();
 
- = 0;
-/* ====== メイン ====== */
-
-const HEADER_H = 80;
-
-function resize(){
-  canvas.width = innerWidth;
-  canvas.height = innerHeight - HEADER_H;
-  canvas.style.position = "absolute";
-  canvas.style.top = HEADER_H + "px";
-  canvas.style.left = "0";
-}
-resize();
-addEventListener("resize", resize);
-
+/* ===== メインループ ===== */
 function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // パドル
   ctx.fillStyle="#fff";
-  ctx.fillRect(
-    paddle.x,
-    canvas.height - 20,
-    paddle.w,
-    10
-  );
+  ctx.fillRect(paddle.x,canvas.height-20,paddle.w,10);
 
-  // ボール
   balls.forEach(b=>{
-    b.x += b.vx;
-    b.y += b.vy;
+    b.x+=b.vx;b.y+=b.vy;
+    if(b.x<0||b.x>canvas.width) b.vx*=-1;
+    if(b.y<0) b.vy*=-1;
 
-    if(b.x < 0 || b.x > canvas.width) b.vx *= -1;
-    if(b.y < 0) b.vy *= -1;
-
-    // パドル反射
-    if(
-      b.y + 6 > canvas.height - 20 &&
-      b.x > paddle.x &&
-      b.x < paddle.x + paddle.w
-    ){
-      b.vy = -Math.abs(b.vy);
+    if(b.y+b.r>canvas.height-20 &&
+      b.x>paddle.x && b.x<paddle.x+paddle.w){
+      b.vy=-Math.abs(b.vy);
     }
 
-    // 落下 → ライフ減少
-    if(b.y > canvas.height){
+    if (b.y - b.r > canvas.height) {
       life--;
       resetGame();
-
-      if(life <= 0){
-        stage = 1;
-        score = 0;
-        life = 5;
-        hi = Math.max(hi, score);
-        localStorage.hi = hi;
+      if (life <= 0) {
+        stage=1;
+        score=0;
+        life=5;
+        secret=false;
       }
     }
 
     ctx.beginPath();
-    ctx.arc(b.x, b.y, 6, 0, Math.PI*2);
+    ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
     ctx.fill();
   });
 
-  // ブロック
   blocks.forEach((bl,i)=>{
-    ctx.fillStyle = bl.c;
-    ctx.fillRect(bl.x, bl.y, bl.w, bl.h);
-
+    ctx.fillStyle=bl.c;
+    ctx.fillRect(bl.x,bl.y,bl.w,bl.h);
     balls.forEach(b=>{
-      if(
-        b.x > bl.x && b.x < bl.x + bl.w &&
-        b.y > bl.y && b.y < bl.y + bl.h
-      ){
+      if(b.x>bl.x&&b.x<bl.x+bl.w&&b.y>bl.y&&b.y<bl.y+bl.h){
         blocks.splice(i,1);
-        b.vy *= -1;
-        score += secret ? 200 : 100;
-        se.currentTime = 0;
-        se.play();
+        b.vy*=-1;
+        score+=secret?200:100;
+        se.currentTime=0;se.play();
       }
     });
   });
 
-  if(blocks.length === 0){
+  if(blocks.length===0){
     stage++;
-    secret = false;
+    secret=false;
     resetGame();
   }
 
-  // UI更新
-  scoreLabel.textContent = "SCORE " + score;
-  stageLabel.textContent = "STAGE " + stage;
-  lifeLabel.textContent = "❤️".repeat(life);
-  hi = Math.max(hi, score);
-  localStorage.hi = hi;
-  hiscore.textContent = "HI: " + hi;
+  score.textContent="SCORE "+score;
+  stageLabel.textContent="STAGE "+stage;
+  life.textContent="❤️".repeat(life);
+  hi=Math.max(hi,score);localStorage.hi=hi;
+  hiscore.textContent="HI: "+hi;
 
   requestAnimationFrame(loop);
 }
-
 loop();
+
 /* ===== 操作 ===== */
 addEventListener("mousemove",e=>paddle.x=e.clientX-paddle.w/2);
 addEventListener("touchmove",e=>paddle.x=e.touches[0].clientX-paddle.w/2);
 
-/* ===== 設定 & 偽バグ ===== */
+/* ===== 設定 & 隠し解放 ===== */
 let selectCount=0;
+let settingsTap=0;
+
 settingsBtn.onclick=()=>{
+  settingsTap++;
+  if(settingsTap>=10){
+    unlockAll=true;
+    localStorage.unlockAll="1";
+    settingsTap=0;
+  }
+
   stageSelect.innerHTML="";
-  for(let i=1;i<=Math.max(stage,20);i++){
+  const maxStage = unlockAll ? 999 : Math.max(stage,20);
+  for(let i=1;i<=maxStage;i++){
     let o=document.createElement("option");
     o.value=i;o.textContent="STAGE "+i;
     stageSelect.appendChild(o);
