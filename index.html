@@ -110,6 +110,7 @@ const headerHeight = 60;
 function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight - headerHeight;
+resetPaddle();
 }
 
 resize();
@@ -120,7 +121,10 @@ const paddle = {
   x: 0,
   y: 0
 };
-
+function resetPaddle() {
+  paddle.x = (canvas.width - paddle.w) / 2;
+  paddle.y = canvas.height - paddle.h - 10;
+}
 /* ===== ボール ===== */
 const ball = {
   r: 6,
