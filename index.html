@@ -100,83 +100,67 @@ document.addEventListener("click", () => {
     }
   }
 });
-
 /* ===== Canvas ===== */
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+/* ヘッダー高さ */
 const headerHeight = 60;
 
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight - headerHeight;
-resetPaddle();
-}
-
-resize();
-window.addEventListener("resize", resize);
+/* ===== パドル ===== */
 const paddle = {
   w: 100,
   h: 12,
   x: 0,
   y: 0
 };
+
 function resetPaddle() {
   paddle.x = (canvas.width - paddle.w) / 2;
   paddle.y = canvas.height - paddle.h - 10;
 }
+
 /* ===== ボール ===== */
 const ball = {
   r: 6,
   x: 0,
   y: 0,
-  vx: 5,
-  vy: -5
+  vx: 4,
+  vy: -4
 };
 
-/* ===== ブロック ===== */
-const rows = 5;
-const cols = 8;
-const blockH = 16;
-const gap = 6;
-let blockW;
-let blocks = [];
-
-function initBlocks() {
-  blocks = [];
-  blockW = (canvas.width - gap * (cols + 1)) / cols;
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      blocks.push({
-        x: gap + c * (blockW + gap),
-        y: 20 + r * (blockH + gap),
-        alive: true
-      });
-    }
-  }
-}
-
-/* ===== リセット ===== */
-function reset() {
-  paddle.x = (canvas.width - paddle.w) / 2;
-  paddle.y = canvas.height - 30;
+function resetBall() {
   ball.x = canvas.width / 2;
-  ball.y = canvas.height - 60;
-  ball.vx = 5;
-  ball.vy = -5;
-  initBlocks();
+  ball.y = canvas.height / 2;
+  ball.vx = 4 * (Math.random() > 0.5 ? 1 : -1);
+  ball.vy = -4;
 }
-reset();
 
-/* ===== 操作 ===== */
+/* ===== リサイズ ===== */
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight - headerHeight;
+  resetPaddle();
+}
+
+resize();
+window.addEventListener("resize", resize);
+
+/* ===== タッチ操作 ===== */
 canvas.addEventListener("touchmove", e => {
   const rect = canvas.getBoundingClientRect();
   paddle.x = e.touches[0].clientX - rect.left - paddle.w / 2;
+
+  // 画面外に出ないように
+  if (paddle.x < 0) paddle.x = 0;
+  if (paddle.x + paddle.w > canvas.width) {
+    paddle.x = canvas.width - paddle.w;
+  }
 });
 
 /* ===== 描画 ===== */
 function draw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // パドル
   ctx.fillStyle = "white";
@@ -186,12 +170,6 @@ function draw() {
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
   ctx.fill();
-
-  // ブロック
-  ctx.fillStyle = "#4aa3ff";
-  blocks.forEach(b => {
-    if (b.alive) ctx.fillRect(b.x, b.y, blockW, blockH);
-  });
 }
 
 /* ===== 更新 ===== */
@@ -199,33 +177,28 @@ function update() {
   ball.x += ball.vx;
   ball.y += ball.vy;
 
-  if (ball.x < ball.r || ball.x > canvas.width - ball.r) ball.vx *= -1;
-  if (ball.y < ball.r) ball.vy *= -1;
+  // 壁反射
+  if (ball.x < ball.r || ball.x > canvas.width - ball.r) {
+    ball.vx *= -1;
+  }
+  if (ball.y < ball.r) {
+    ball.vy *= -1;
+  }
 
- if (
-  ball.y + ball.r > paddle.y &&
-  ball.y < paddle.y + paddle.h &&
-  ball.x > paddle.x &&
-  ball.x < paddle.x + paddle.w
-) {
-  ball.vy = -Math.abs(ball.vy);
-  ball.y = paddle.y - ball.r;
- }
-  blocks.forEach(b => {
-    if (b.alive &&
-  ball.x + ball.r > b.x &&
-  ball.x - ball.r < b.x + blockW &&
-  ball.y + ball.r > b.y &&
-  ball.y - ball.r < b.y + blockH
-) {
-  b.alive = false;
-  ball.vy *= -1;
-  ball.y += ball.vy;
-  addScore(10);
-    }
-  });
+  // パドル反射
+  if (
+    ball.y + ball.r > paddle.y &&
+    ball.x > paddle.x &&
+    ball.x < paddle.x + paddle.w
+  ) {
+    ball.vy = -Math.abs(ball.vy);
+    ball.y = paddle.y - ball.r;
+  }
 
-  if (ball.y > canvas.height) reset();
+  // 落下
+  if (ball.y > canvas.height) {
+    resetBall();
+  }
 }
 
 /* ===== ループ ===== */
@@ -234,8 +207,6 @@ function loop() {
   draw();
   requestAnimationFrame(loop);
 }
-loop();
-</script>
 
-</body>
-</html>
+resetBall();
+loop();
