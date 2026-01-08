@@ -139,73 +139,80 @@ function resetGame(){
 
 resetGame();
 
-/* ===== メイン ===== */
+ = 0;
+/* ====== メイン ====== */
 
-let miss = false; // ♡が一気に減るのを防ぐフラグ
+const HEADER_H = 80;
 
-function resetGame(){
-  setBalls();
-  makeBlocks();
+function resize(){
+  canvas.width = innerWidth;
+  canvas.height = innerHeight - HEADER_H;
+  canvas.style.position = "absolute";
+  canvas.style.top = HEADER_H + "px";
+  canvas.style.left = "0";
 }
-
-resetGame();
+resize();
+addEventListener("resize", resize);
 
 function loop(){
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  /* パドル描画 */
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(paddle.x, canvas.height - 20, paddle.w, 10);
+  // パドル
+  ctx.fillStyle="#fff";
+  ctx.fillRect(
+    paddle.x,
+    canvas.height - 20,
+    paddle.w,
+    10
+  );
 
-  /* ボール処理 */
-  balls.forEach(b => {
+  // ボール
+  balls.forEach(b=>{
     b.x += b.vx;
     b.y += b.vy;
 
-    if (b.x < 0 || b.x > canvas.width) b.vx *= -1;
-    if (b.y < 0) b.vy *= -1;
+    if(b.x < 0 || b.x > canvas.width) b.vx *= -1;
+    if(b.y < 0) b.vy *= -1;
 
     // パドル反射
-    if (
+    if(
       b.y + 6 > canvas.height - 20 &&
       b.x > paddle.x &&
       b.x < paddle.x + paddle.w
-    ) {
+    ){
       b.vy = -Math.abs(b.vy);
     }
 
-    // ⬇⬇⬇ ♡が減る本体（ここが重要）
-    if (b.y > canvas.height && !miss) {
-      miss = true;
+    // 落下 → ライフ減少
+    if(b.y > canvas.height){
       life--;
+      resetGame();
 
-      if (life <= 0) {
+      if(life <= 0){
         stage = 1;
         score = 0;
         life = 5;
+        hi = Math.max(hi, score);
+        localStorage.hi = hi;
       }
-
-      resetGame();
     }
 
     ctx.beginPath();
-    ctx.arc(b.x, b.y, 6, 0, Math.PI * 2);
+    ctx.arc(b.x, b.y, 6, 0, Math.PI*2);
     ctx.fill();
   });
 
-  /* ブロック処理 */
-  blocks.forEach((bl, i) => {
+  // ブロック
+  blocks.forEach((bl,i)=>{
     ctx.fillStyle = bl.c;
     ctx.fillRect(bl.x, bl.y, bl.w, bl.h);
 
-    balls.forEach(b => {
-      if (
-        b.x > bl.x &&
-        b.x < bl.x + bl.w &&
-        b.y > bl.y &&
-        b.y < bl.y + bl.h
-      ) {
-        blocks.splice(i, 1);
+    balls.forEach(b=>{
+      if(
+        b.x > bl.x && b.x < bl.x + bl.w &&
+        b.y > bl.y && b.y < bl.y + bl.h
+      ){
+        blocks.splice(i,1);
         b.vy *= -1;
         score += secret ? 200 : 100;
         se.currentTime = 0;
@@ -214,22 +221,20 @@ function loop(){
     });
   });
 
-  /* ステージクリア */
-  if (blocks.length === 0) {
+  if(blocks.length === 0){
     stage++;
     secret = false;
     resetGame();
   }
 
-  /* UI更新 */
-  scoreEl.textContent = "SCORE " + score;
+  // UI更新
+  scoreLabel.textContent = "SCORE " + score;
   stageLabel.textContent = "STAGE " + stage;
-  lifeEl.textContent = "❤️".repeat(life);
+  lifeLabel.textContent = "❤️".repeat(life);
   hi = Math.max(hi, score);
   localStorage.hi = hi;
   hiscore.textContent = "HI: " + hi;
 
-  miss = false; // フレーム終了時に解除
   requestAnimationFrame(loop);
 }
 
