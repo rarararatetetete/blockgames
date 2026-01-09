@@ -9,6 +9,7 @@
 :root{
   --theme:#3aa0ff;
 }
+*{box-sizing:border-box}
 body{
   margin:0;
   background:#0b1a33;
@@ -22,21 +23,20 @@ header{
   display:grid;
   grid-template-columns:1fr auto 1fr;
   align-items:center;
-  padding:0 12px;
-  box-shadow:0 2px 8px #0008;
+  padding:0 10px;
 }
 #logo{
   font-weight:900;
   letter-spacing:2px;
-  font-size:20px;
-  color:var(--theme);
 }
-#left,#right{font-size:13px}
-#right{display:flex;flex-direction:column;align-items:flex-end}
+#right{
+  text-align:right;
+}
 canvas{display:block}
 
 .overlay{
-  position:fixed;inset:0;
+  position:fixed;
+  inset:0;
   background:#000c;
   display:none;
   align-items:center;
@@ -46,34 +46,56 @@ canvas{display:block}
 .panel{
   background:#112;
   padding:20px;
-  border-radius:16px;
-  min-width:280px;
-  box-shadow:0 0 30px #000;
+  border-radius:12px;
+  min-width:260px;
 }
 button{
   background:var(--theme);
-  color:#000;
   border:none;
-  border-radius:10px;
-  padding:10px;
-  font-weight:700;
+  color:#fff;
+  padding:10px 16px;
+  border-radius:8px;
+  font-size:16px;
 }
-input,select{width:100%}
+input,select{
+  width:100%;
+  margin-top:8px;
+}
+#title{
+  position:fixed;
+  inset:0;
+  background:#0b1a33;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+#title h1{
+  font-size:40px;
+  margin-bottom:20px;
+}
 </style>
 </head>
 
 <body>
 
+<div id="title">
+  <h1>BLOCK GAMES</h1>
+  <p>Tap to Start</p>
+</div>
+
 <header>
   <div id="left">
-    <div id="hiscore">HI:0</div>
+    <div id="hiscore">HI 0</div>
     <div id="stageLabel">STAGE 1</div>
   </div>
-  <div id="logo">BLOCK GAMES</div>
+  <div id="center">
+    <div id="logo">BLOCK GAMES</div>
+  </div>
   <div id="right">
     <button id="settingsBtn">⚙️</button>
     <div id="life">❤️❤️❤️❤️❤️</div>
-    <div id="score">SCORE 0</div>
+    <div id="score">0</div>
   </div>
 </header>
 
@@ -81,108 +103,110 @@ input,select{width:100%}
 
 <div id="search" class="overlay">
   <div class="panel">
-    <button onclick="closeSearch()">← 戻る</button>
-    <h3>DuckDuckGo検索</h3>
-    <input id="q">
-    <button onclick="searchDDG()">検索</button>
+    <button onclick="search.style.display='none'">←</button>
+    <input id="q" placeholder="検索">
+    <button onclick="window.open('https://duckduckgo.com/?q='+encodeURIComponent(q.value),'_blank')">検索</button>
   </div>
 </div>
 
 <div id="settings" class="overlay">
   <div class="panel">
     <h3>設定</h3>
-    ステージ<select id="stageSelect"></select><br><br>
-    BGM<input type="range" id="bgmVol" min="0" max="1" step="0.01"><br>
-    SE<input type="range" id="seVol" min="0" max="1" step="0.01"><br><br>
-    テーマ<input type="color" id="themePick"><br><br>
-    <button onclick="closeSettings()">閉じる</button>
+    BGM<input type="range" id="bgmVol" min="0" max="1" step="0.01">
+    SE<input type="range" id="seVol" min="0" max="1" step="0.01">
+    <button onclick="settings.style.display='none'">閉じる</button>
   </div>
 </div>
 
 <script>
-/* ===== 基本 ===== */
-const canvas=game,ctx=canvas.getContext("2d"),H=64;
-function resize(){canvas.width=innerWidth;canvas.height=innerHeight-H}
-resize();addEventListener("resize",resize);
+/* ===== 初期 ===== */
+const canvas=game,ctx=canvas.getContext("2d");
+const H=64;
+function resize(){
+  canvas.width=innerWidth;
+  canvas.height=innerHeight-H;
+}
+resize();
+addEventListener("resize",resize);
 
 /* ===== 状態 ===== */
-let stage=1,score=0,life=5;
+let state="title";
+let stage=1;
+let score=0;
+let life=5;
+let tapLogo=0;
+let tapSettings=0;
 let hi=+localStorage.hi||0;
-hiscore.textContent="HI:"+hi;
-
-/* ===== ロゴ5タップ検索 ===== */
-let taps=0;
-logo.onclick=()=>{if(++taps>=5){openSearch();taps=0;}}
-
-/* ===== 検索 ===== */
-function searchDDG(){
-  const q=document.getElementById("q").value;
-  if(q)open("https://duckduckgo.com/?q="+encodeURIComponent(q),"_blank");
-}
-function openSearch(){search.style.display="flex"}
-function closeSearch(){search.style.display="none"}
+hiscore.textContent="HI "+hi;
 
 /* ===== サウンド ===== */
 const bgm=new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_8bdf5f3f9c.mp3");
-bgm.loop=true;bgm.volume=.3;bgm.play();
+bgm.loop=true;bgm.volume=.4;
 const se=new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_64c97b8c0b.mp3");
 bgmVol.oninput=e=>bgm.volume=e.target.value;
 seVol.oninput=e=>se.volume=e.target.value;
 
+/* ===== ロゴ5タップ ===== */
+logo.onclick=()=>{
+  tapLogo++;
+  if(tapLogo>=5){
+    search.style.display="flex";
+    tapLogo=0;
+  }
+};
+
+/* ===== 設定10タップ ===== */
+settingsBtn.onclick=()=>{
+  tapSettings++;
+  settings.style.display="flex";
+  if(tapSettings>=10){
+    stage=101;
+  }
+};
+
 /* ===== ゲーム ===== */
 let paddle={x:200,w:100};
-let balls=[],blocks=[];
+let balls=[];
+let blocks=[];
 
-function speed(){
-  if(score>=1000)return 10;
-  if(score>=800)return 9;
-  if(score>=500)return 8;
-  if(score>=300)return 7;
-  if(score>=100)return 6;
-  return 5;
-}
-
-function setBalls(){
-  let n=stage>=76?3:stage>=51?2:1;
-  balls=[];
-  for(let i=0;i<n;i++)
-    balls.push({x:canvas.width/2,y:300,vx:speed(),vy:-speed()});
-}
-
-function makeBlocks(){
+function resetStage(){
+  balls=[{x:canvas.width/2,y:canvas.height-60,vx:5+stage*.05,vy:-6-stage*.05}];
+  if(stage>=51) balls.push({...balls[0]});
+  if(stage>=76) balls.push({...balls[0]});
   blocks=[];
-  for(let i=0;i<20;i++)
-    blocks.push({
-      x:Math.random()*(canvas.width-60),
-      y:Math.random()*200+40,
-      w:60,h:20,
-      c:`hsl(${Math.random()*360},100%,60%)`
-    });
+  if(stage<101){
+    for(let i=0;i<20;i++){
+      blocks.push({
+        x:Math.random()*(canvas.width-60),
+        y:Math.random()*200+40,
+        w:60,h:20,
+        c:`hsl(${Math.random()*360},100%,60%)`
+      });
+    }
+  }
 }
 
-function resetGame(){setBalls();makeBlocks()}
-resetGame();
-
-/* ===== メインループ ===== */
-function loop(){
+function gameLoop(){
+  if(state!=="game") return;
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   ctx.fillStyle="#fff";
   ctx.fillRect(paddle.x,canvas.height-20,paddle.w,10);
 
   balls.forEach(b=>{
-    b.x+=b.vx;b.y+=b.vy;
-    if(b.x<0||b.x>canvas.width)b.vx*=-1;
-    if(b.y<0)b.vy*=-1;
-
-    if(b.y+6>canvas.height-20 &&
-       b.x>paddle.x && b.x<paddle.x+paddle.w)
-      b.vy=-Math.abs(b.vy);
-
+    b.x+=b.vx;
+    b.y+=b.vy;
+    if(b.x<0||b.x>canvas.width) b.vx*=-1;
+    if(b.y<0) b.vy*=-1;
     if(b.y>canvas.height){
       life--;
-      if(life<=0){stage=1;score=0;life=5}
-      resetGame();
+      if(life<=0){
+        stage=1;score=0;life=5;
+      }
+      resetStage();
+    }
+    if(b.y>canvas.height-30 && b.x>paddle.x && b.x<paddle.x+paddle.w){
+      b.vy=-Math.abs(b.vy);
     }
     ctx.beginPath();
     ctx.arc(b.x,b.y,6,0,Math.PI*2);
@@ -202,44 +226,33 @@ function loop(){
     });
   });
 
-  if(blocks.length===0){stage++;resetGame()}
+  if(blocks.length===0){
+    stage++;
+    resetStage();
+  }
 
-  score.textContent="SCORE "+score;
+  score.textContent=score;
   stageLabel.textContent="STAGE "+stage;
   life.textContent="❤️".repeat(life);
-  hi=Math.max(hi,score);localStorage.hi=hi;
-  hiscore.textContent="HI:"+hi;
+  hi=Math.max(hi,score);
+  localStorage.hi=hi;
+  hiscore.textContent="HI "+hi;
 
-  requestAnimationFrame(loop);
+  requestAnimationFrame(gameLoop);
 }
-loop();
 
 /* ===== 操作 ===== */
 addEventListener("mousemove",e=>paddle.x=e.clientX-paddle.w/2);
 addEventListener("touchmove",e=>paddle.x=e.touches[0].clientX-paddle.w/2);
 
-/* ===== 設定 ===== */
-let press=0;
-settingsBtn.onclick=()=>{
-  press++;
-  if(press>=10)stage=101;
-  stageSelect.innerHTML="";
-  for(let i=1;i<=stage;i++){
-    let o=document.createElement("option");
-    o.value=i;o.textContent="STAGE "+i;
-    stageSelect.appendChild(o);
-  }
-  settings.style.display="flex";
-}
-stageSelect.onchange=e=>{stage=+e.target.value;resetGame()}
-function closeSettings(){settings.style.display="none"}
-
-themePick.oninput=e=>{
-  document.documentElement.style.setProperty("--theme",e.target.value);
-  localStorage.theme=e.target.value;
-}
-if(localStorage.theme)
- document.documentElement.style.setProperty("--theme",localStorage.theme);
+/* ===== 開始 ===== */
+title.onclick=()=>{
+  title.style.display="none";
+  state="game";
+  bgm.play();
+  resetStage();
+  gameLoop();
+};
 </script>
 
 </body>
